@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Loader2, Zap, MessageSquare, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
 import { useStore } from '@/store'
@@ -16,9 +16,11 @@ export function ChatWindow() {
   // Track which message IDs should animate (only ones added this session)
   const animatedIdsRef = useRef<Set<string>>(new Set())
 
-  const chat = chats.find(c => c.id === activeChatId) ?? null
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
 
-  // Re-focus textarea when switching chats (with delay so DOM settles)
+  const chat = chats.find(c => c.id === activeChatId) ?? null
   useEffect(() => {
     const t = setTimeout(() => textareaRef.current?.focus(), 50)
     return () => clearTimeout(t)
@@ -120,7 +122,7 @@ export function ChatWindow() {
                     key={msg.id}
                     message={msg}
                     animate={shouldAnimate}
-                    onScrollNeeded={() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                    onScrollNeeded={scrollToBottom}
                   />
                 )
               })}

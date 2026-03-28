@@ -20,6 +20,12 @@ git branch -M main
 git remote add origin https://github.com/bibekchandsah/lumina.git
 git push -u origin main
 
+
+git remote add origin https://github.com/bibekchandsah/lumina.git
+git branch -M main
+git push -u origin main
+
+
 Dark glassmorphism UI with smooth Framer Motion animations
 Add/remove API keys for Gemini, Groq, and Grok with model selection
 Smart fallback: auto-switches keys on 429 (rate limit) or 401 (invalid), with configurable cooldown and retry
@@ -43,3 +49,5 @@ Typewriter component animates each character at 6ms/char as chunks stream in —
 Reload no longer triggers typewriter — only messages added in the current session get animated (tracked via animatedIdsRef)
 Autofocus has a 50ms delay so the DOM is ready when switching chats
 Scroll-to-bottom fires on every typewriter tick via onScrollNeeded callback
+
+give answer from muultiple modals

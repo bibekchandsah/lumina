@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { AlertCircle, Clock, Cpu } from 'lucide-react'
+import { memo } from 'react'
 import type { Message } from '@/types'
 import { PROVIDER_INFO } from '@/types'
 import { cn } from '@/utils/cn'
@@ -50,7 +51,7 @@ function AssistantContent({ content, animate, onScrollNeeded }: { content: strin
   )
 }
 
-export function ChatMessage({ message, animate = false, onScrollNeeded }: Props) {
+export const ChatMessage = memo(function ChatMessage({ message, animate = false, onScrollNeeded }: Props) {
   const isUser = message.role === 'user'
   const isError = message.role === 'error'
 
@@ -117,4 +118,4 @@ export function ChatMessage({ message, animate = false, onScrollNeeded }: Props)
       )}
     </motion.div>
   )
-}
+})
