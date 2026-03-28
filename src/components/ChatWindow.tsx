@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Loader2, Zap, MessageSquare, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
+import { Send, Loader2, Zap, MessageSquare, PanelLeftOpen, PanelLeftClose, ArrowDown, ArrowUp } from 'lucide-react'
 import { useStore } from '@/store'
 import { useAI } from '@/hooks/useAI'
 import { ChatMessage } from './ChatMessage'
@@ -15,6 +15,25 @@ export function ChatWindow() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [animatedIds, setAnimatedIds] = useState<Set<string>>(new Set())
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showScrollDown, setShowScrollDown] = useState(false)
+  const [showScrollUp, setShowScrollUp] = useState(false)
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const { scrollTop, scrollHeight, clientHeight } = el
+    const threshold = clientHeight
+    const distFromBottom = scrollHeight - scrollTop - clientHeight
+    setShowScrollDown(distFromBottom > threshold)
+    // Only show "go to top" when user has scrolled up (away from bottom)
+    setShowScrollUp(scrollTop > threshold && distFromBottom > 50)
+  }, [])
+
+  const scrollToTop = useCallback(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -100,8 +119,9 @@ export function ChatWindow() {
         )}
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4">
+      {/* Messages + scroll buttons */}
+      <div className="flex-1 relative overflow-hidden">
+        <div className="h-full overflow-y-auto py-4" ref={scrollContainerRef} onScroll={handleScroll}>
         {!chat || chat.messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-600/20 border border-violet-500/20 flex items-center justify-center">
@@ -172,7 +192,41 @@ export function ChatWindow() {
           </>
         )}
         <div ref={bottomRef} />
-      </div>
+        </div>{/* end scroll container */}
+
+        {/* Scroll buttons */}
+        <AnimatePresence>
+          {showScrollUp && (
+            <motion.button
+              key="up"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              onClick={scrollToTop}
+              className={cn(
+                'absolute right-4 w-8 h-8 rounded-full glass border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors shadow-lg z-10',
+                showScrollDown ? 'bottom-14' : 'bottom-4'
+              )}
+              title="Scroll to top"
+            >
+              <ArrowUp size={15} />
+            </motion.button>
+          )}
+          {showScrollDown && (
+            <motion.button
+              key="down"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              onClick={scrollToBottom}
+              className="absolute bottom-4 right-4 w-8 h-8 rounded-full glass border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors shadow-lg z-10"
+              title="Scroll to bottom"
+            >
+              <ArrowDown size={15} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>{/* end outer wrapper */}
 
       {/* Input */}
       <div className="p-4 border-t border-white/10">
