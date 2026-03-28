@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { AlertCircle, Clock, Cpu } from 'lucide-react'
-import { memo } from 'react'
+import { AlertCircle, Clock, Cpu, Copy, Check as CheckIcon } from 'lucide-react'
+import { memo, useState } from 'react'
 import type { Message } from '@/types'
 import { PROVIDER_INFO } from '@/types'
 import { cn } from '@/utils/cn'
@@ -54,6 +54,14 @@ function AssistantContent({ content, animate, onScrollNeeded }: { content: strin
 export const ChatMessage = memo(function ChatMessage({ message, animate = false, onScrollNeeded }: Props) {
   const isUser = message.role === 'user'
   const isError = message.role === 'error'
+  const [copied, setCopied] = useState(false)
+  const [hovered, setHovered] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <motion.div
@@ -71,9 +79,13 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
         </div>
       )}
 
-      <div className={cn('max-w-[75%] flex flex-col gap-1', isUser && 'items-end')}>
+      <div
+        className={cn('max-w-[75%] flex flex-col gap-1', isUser && 'items-end')}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
         <div className={cn(
-          'px-4 py-3 rounded-2xl text-sm leading-relaxed',
+          'relative px-4 py-3 rounded-2xl text-sm leading-relaxed',
           isUser ? 'msg-user text-white rounded-br-sm' :
           isError ? 'bg-red-500/10 border border-red-500/30 text-red-300 rounded-bl-sm' :
           'msg-ai text-slate-200 rounded-bl-sm'
@@ -82,6 +94,17 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
             <AssistantContent content={message.content} animate={animate} onScrollNeeded={onScrollNeeded} />
+          )}
+          {/* Copy button */}
+          {!isError && (
+            <button
+              onClick={handleCopy}
+              style={{ opacity: hovered ? 1 : 0 }}
+              className="absolute -top-2 -right-2 transition-opacity duration-150 w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700"
+              title="Copy"
+            >
+              {copied ? <CheckIcon size={11} className="text-emerald-400" /> : <Copy size={11} />}
+            </button>
           )}
         </div>
 

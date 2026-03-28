@@ -51,3 +51,5 @@ Autofocus has a 50ms delay so the DOM is ready when switching chats
 Scroll-to-bottom fires on every typewriter tick via onScrollNeeded callback
 
 give answer from muultiple modals
+add edit icon so that user can edit asked question 
+add scroll to bottom and top icon 
