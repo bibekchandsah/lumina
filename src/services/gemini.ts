@@ -4,7 +4,8 @@ export async function callGemini(
   apiKey: string,
   model: string,
   messages: Message[],
-  onChunk?: (text: string) => void
+  onChunk?: (text: string) => void,
+  signal?: AbortSignal
 ): Promise<{ content: string; tokens: number }> {
   const contents = messages
     .filter(m => m.role !== 'error')
@@ -20,6 +21,7 @@ export async function callGemini(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: 2048 } }),
+    signal,
   })
 
   if (!res.ok) {

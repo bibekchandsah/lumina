@@ -11,13 +11,14 @@ async function callProvider(
   provider: Provider,
   key: APIKey,
   messages: Message[],
-  onChunk?: (t: string) => void
+  onChunk?: (t: string) => void,
+  signal?: AbortSignal
 ): Promise<{ content: string; tokens: number }> {
   const model = key.model || ''
   switch (provider) {
-    case 'gemini': return callGemini(key.key, model, messages, onChunk)
-    case 'groq':   return callGroq(key.key, model, messages, onChunk)
-    case 'grok':   return callGrok(key.key, model, messages, onChunk)
+    case 'gemini': return callGemini(key.key, model, messages, onChunk, signal)
+    case 'groq':   return callGroq(key.key, model, messages, onChunk, signal)
+    case 'grok':   return callGrok(key.key, model, messages, onChunk, signal)
   }
 }
 
@@ -25,24 +26,23 @@ export function useAI() {
   const store = useStore()
 
   async function sendMessage(chatId: string, userContent: string) {
-    const { addMessage, setIsStreaming, setStreamingContent } = store
+    const { addMessage, setIsStreaming, setStreamingContent, setAbortController } = store
 
-    // Add user message first
     addMessage(chatId, { role: 'user', content: userContent })
 
-    // Read fresh state AFTER adding the message to get up-to-date chat history
     const freshChat = useStore.getState().chats.find(c => c.id === chatId)
     const history: Message[] = freshChat ? freshChat.messages : [{ id: '', role: 'user', content: userContent, timestamp: Date.now() }]
 
-    // Always read settings/keys fresh to avoid stale closures
     const { settings, getActiveKeys, updateKeyStatus, updateKeyUsage } = useStore.getState()
+
+    const abort = new AbortController()
+    setAbortController(abort)
+    setIsStreaming(true)
+    setStreamingContent('')
 
     const providers = settings.defaultProvider === 'auto'
       ? PROVIDER_ORDER
       : [settings.defaultProvider as Provider, ...PROVIDER_ORDER.filter(p => p !== settings.defaultProvider)]
-
-    setIsStreaming(true)
-    setStreamingContent('')
 
     let lastError = ''
 
@@ -60,13 +60,14 @@ export function useAI() {
               ? (text: string) => { accumulated += text; setStreamingContent(accumulated) }
               : undefined
 
-            const result = await callProvider(provider, key, history, onChunk)
+            const result = await callProvider(provider, key, history, onChunk, abort.signal)
             const latency = Date.now() - start
             const tokens = result.tokens || estimateTokens(result.content)
 
             updateKeyUsage(key.id, tokens, latency, true)
             setIsStreaming(false)
             setStreamingContent('')
+            setAbortController(null)
 
             addMessage(chatId, {
               role: 'assistant',
@@ -79,6 +80,26 @@ export function useAI() {
             })
             return
           } catch (err: unknown) {
+            // If aborted by user, save partial content and exit cleanly
+            if (abort.signal.aborted) {
+              const partial = useStore.getState().streamingContent
+              setIsStreaming(false)
+              setStreamingContent('')
+              setAbortController(null)
+              if (partial.trim()) {
+                addMessage(chatId, {
+                  role: 'assistant',
+                  content: partial + '\n\n*(stopped)*',
+                  provider,
+                  model: key.model,
+                  keyId: key.id,
+                  latency: Date.now() - start,
+                  tokens: estimateTokens(partial),
+                })
+              }
+              return
+            }
+
             const e = err as { status?: number; message?: string }
             const status = e?.status
             lastError = e?.message || 'Unknown error'
@@ -86,14 +107,13 @@ export function useAI() {
             if (status === 401 || status === 403) {
               updateKeyStatus(key.id, 'failed')
               updateKeyUsage(key.id, 0, Date.now() - start, false)
-              break // try next key
+              break
             }
             if (status === 429) {
               updateKeyStatus(key.id, 'rate_limited', settings.cooldownMinutes)
               updateKeyUsage(key.id, 0, Date.now() - start, false)
-              break // try next key
+              break
             }
-            // other errors: retry
             if (attempt === retries) {
               updateKeyUsage(key.id, 0, Date.now() - start, false)
             }
@@ -102,12 +122,15 @@ export function useAI() {
       }
     }
 
-    setIsStreaming(false)
-    setStreamingContent('')
-    addMessage(chatId, {
-      role: 'error',
-      content: `All API keys exhausted. Last error: ${lastError}\n\nPlease add valid API keys in Settings.`,
-    })
+    if (!abort.signal.aborted) {
+      setIsStreaming(false)
+      setStreamingContent('')
+      setAbortController(null)
+      addMessage(chatId, {
+        role: 'error',
+        content: `All API keys exhausted. Last error: ${lastError}\n\nPlease add valid API keys in Settings.`,
+      })
+    }
   }
 
   return { sendMessage }

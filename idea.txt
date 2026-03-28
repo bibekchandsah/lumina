@@ -50,6 +50,6 @@ Reload no longer triggers typewriter — only messages added in the current sess
 Autofocus has a 50ms delay so the DOM is ready when switching chats
 Scroll-to-bottom fires on every typewriter tick via onScrollNeeded callback
 add edit icon so that user can edit asked question 
+add scroll to bottom and top icon 
 
 give answer from muultiple modals
-add scroll to bottom and top icon 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Loader2, Zap, MessageSquare, PanelLeftOpen, PanelLeftClose, ArrowDown, ArrowUp } from 'lucide-react'
+import { Send, Loader2, Zap, MessageSquare, PanelLeftOpen, PanelLeftClose, ArrowDown, ArrowUp, Square } from 'lucide-react'
 import { useStore } from '@/store'
 import { useAI } from '@/hooks/useAI'
 import { ChatMessage } from './ChatMessage'
@@ -8,7 +8,7 @@ import { Typewriter } from './Typewriter'
 import { cn } from '@/utils/cn'
 
 export function ChatWindow() {
-  const { activeChatId, chats, createChat, isStreaming, streamingContent, keys, sidebarOpen, setSidebarOpen } = useStore()
+  const { activeChatId, chats, createChat, isStreaming, streamingContent, keys, sidebarOpen, setSidebarOpen, stopStreaming } = useStore()
   const { sendMessage } = useAI()
   const editMessage = useStore(s => s.editMessage)
   const [input, setInput] = useState('')
@@ -247,11 +247,11 @@ export function ChatWindow() {
             autoFocus
           />
           <button
-            onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
+            onClick={isStreaming ? stopStreaming : handleSend}
+            disabled={!isStreaming && !input.trim()}
             className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white transition-all duration-200 hover:scale-105 disabled:opacity-40 disabled:scale-100 shrink-0 cursor-pointer disabled:cursor-not-allowed"
           >
-            {isStreaming ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            {isStreaming ? <Square size={14} className="fill-white" /> : <Send size={16} />}
           </button>
         </div>
         <p className="text-center text-xs text-slate-700 mt-2">

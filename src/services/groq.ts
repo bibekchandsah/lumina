@@ -4,7 +4,8 @@ export async function callGroq(
   apiKey: string,
   model: string,
   messages: Message[],
-  onChunk?: (text: string) => void
+  onChunk?: (text: string) => void,
+  signal?: AbortSignal
 ): Promise<{ content: string; tokens: number }> {
   const msgs = messages
     .filter(m => m.role !== 'error')
@@ -15,6 +16,7 @@ export async function callGroq(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ model, messages: msgs, stream: streaming, max_tokens: 2048 }),
+    signal,
   })
 
   if (!res.ok) {

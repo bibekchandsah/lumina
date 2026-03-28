@@ -38,6 +38,9 @@ interface AppStore {
   setIsStreaming: (v: boolean) => void
   streamingContent: string
   setStreamingContent: (v: string) => void
+  abortController: AbortController | null
+  setAbortController: (c: AbortController | null) => void
+  stopStreaming: () => void
 }
 
 const defaultSettings: AppSettings = {
@@ -161,6 +164,13 @@ export const useStore = create<AppStore>()(
       setIsStreaming: (v) => set({ isStreaming: v }),
       streamingContent: '',
       setStreamingContent: (v) => set({ streamingContent: v }),
+      abortController: null,
+      setAbortController: (c) => set({ abortController: c }),
+      stopStreaming: () => {
+        const { abortController } = get()
+        abortController?.abort()
+        set({ isStreaming: false, streamingContent: '', abortController: null })
+      },
     }),
     {
       name: 'lumina-store',
