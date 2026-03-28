@@ -1,0 +1,45 @@
+npm run build
+
+
+deploy to vercel
+npm i -g vercel
+vercel --prod
+Set build command: npm run build, output dir: dist.
+Deploy to Render
+    Push to GitHub
+    New → Static Site
+    Build command: npm run build
+    Publish directory: dist
+
+
+echo "# lumina" >> README.md
+git init
+git add .
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/bibekchandsah/lumina.git
+git push -u origin main
+
+Dark glassmorphism UI with smooth Framer Motion animations
+Add/remove API keys for Gemini, Groq, and Grok with model selection
+Smart fallback: auto-switches keys on 429 (rate limit) or 401 (invalid), with configurable cooldown and retry
+Streaming responses with live typing effect
+Per-key usage stats (requests, tokens, avg latency, success rate)
+Export/import keys as JSON
+Preferences panel (default provider, fallback toggle, streaming, retry count, cooldown)
+Keys stored in localStorage only, never sent anywhere except the AI providers directly
+Run npm run dev to test locally.
+
+
+'gemini-2.5-flash'
+
+
+Hover a chat → pencil and trash icons appear on the right
+Click pencil (or double-click the title) → inline input opens, title becomes editable
+Enter to save, Escape to cancel, or click the ✓/✗ buttons
+Delete still works as before
+    clicking trash shows "Delete? ✓ ✗" inline — confirm with ✓ or cancel with ✗. Moving the mouse away also cancels automatically.
+Typewriter component animates each character at 6ms/char as chunks stream in — fast enough to feel snappy but slow enough to see the effect. It also handles chunk appending correctly so it doesn't restart from the beginning on each new chunk, just continues from where it left off. The blinking cursor shows while typing.
+Reload no longer triggers typewriter — only messages added in the current session get animated (tracked via animatedIdsRef)
+Autofocus has a 50ms delay so the DOM is ready when switching chats
+Scroll-to-bottom fires on every typewriter tick via onScrollNeeded callback
