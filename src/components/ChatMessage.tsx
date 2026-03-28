@@ -39,15 +39,10 @@ const mdComponents = {
 
 function AssistantContent({ content, animate, onScrollNeeded }: { content: string; animate: boolean; onScrollNeeded?: () => void }) {
   const { displayed, done } = useTypewriter(content, 10, animate, onScrollNeeded)
-
   return (
     <>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-        {displayed}
-      </ReactMarkdown>
-      {!done && (
-        <span className="inline-block w-[2px] h-[1em] bg-violet-400 animate-pulse ml-0.5 align-middle rounded-full" />
-      )}
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{displayed}</ReactMarkdown>
+      {!done && <span className="inline-block w-[2px] h-[1em] bg-violet-400 animate-pulse ml-0.5 align-middle rounded-full" />}
     </>
   )
 }
@@ -67,11 +62,32 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
   }
 
   const handleEditSubmit = () => {
-    if (editValue.trim() && editValue.trim() !== message.content) {
-      onEdit?.(message.id, editValue.trim())
-    }
+    if (editValue.trim() && editValue.trim() !== message.content) onEdit?.(message.id, editValue.trim())
     setEditing(false)
   }
+
+  // Action buttons shown above the bubble
+  const actionButtons = !isError && !editing ? (
+    <div
+      className="flex gap-1 transition-opacity duration-150"
+      style={{ opacity: hovered ? 1 : 0 }}
+    >
+      <button onClick={handleCopy}
+        className="w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+        title="Copy"
+      >
+        {copied ? <CheckIcon size={11} className="text-emerald-400" /> : <Copy size={11} />}
+      </button>
+      {isUser && onEdit && (
+        <button onClick={() => { setEditValue(message.content); setEditing(true) }}
+          className="w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+          title="Edit"
+        >
+          <Pencil size={11} />
+        </button>
+      )}
+    </div>
+  ) : null
 
   return (
     <motion.div
@@ -82,7 +98,7 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
     >
       {!isUser && (
         <div className={cn(
-          'w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 mt-1',
+          'w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 mt-auto mb-1',
           isError ? 'bg-red-500/20 text-red-400' : 'bg-gradient-to-br from-violet-500 to-indigo-600 text-white'
         )}>
           {isError ? '!' : message.provider ? message.provider[0].toUpperCase() : 'AI'}
@@ -90,12 +106,16 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
       )}
 
       <div
-        className={cn('max-w-[75%] flex flex-col gap-1', isUser && 'items-end')}
+        className={cn('max-w-[75%] flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
+        {/* Icons above bubble — left-aligned for user (right-side), left-aligned for AI */}
+        {actionButtons}
+
+        {/* Bubble */}
         <div className={cn(
-          'relative px-4 py-3 rounded-2xl text-sm leading-relaxed',
+          'px-4 py-3 rounded-2xl text-sm leading-relaxed',
           isUser ? 'msg-user text-white rounded-br-sm' :
           isError ? 'bg-red-500/10 border border-red-500/30 text-red-300 rounded-bl-sm' :
           'msg-ai text-slate-200 rounded-bl-sm'
@@ -129,35 +149,9 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
           ) : (
             <AssistantContent content={message.content} animate={animate} onScrollNeeded={onScrollNeeded} />
           )}
-
-          {/* Action buttons */}
-          {!isError && !editing && (
-            <>
-              {isUser && onEdit && (
-                <button
-                  onClick={() => { setEditValue(message.content); setEditing(true) }}
-                  style={{ opacity: hovered ? 1 : 0 }}
-                  className={cn(
-                    'absolute -top-2 transition-opacity duration-150 w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700',
-                    '-right-9'
-                  )}
-                  title="Edit"
-                >
-                  <Pencil size={11} />
-                </button>
-              )}
-              <button
-                onClick={handleCopy}
-                style={{ opacity: hovered ? 1 : 0 }}
-                className="absolute -top-2 -right-2 transition-opacity duration-150 w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700"
-                title="Copy"
-              >
-                {copied ? <CheckIcon size={11} className="text-emerald-400" /> : <Copy size={11} />}
-              </button>
-            </>
-          )}
         </div>
 
+        {/* Meta info */}
         {!isUser && !isError && (message.provider || message.latency) && (
           <div className="flex items-center gap-3 px-1 text-xs text-slate-600">
             {message.provider && (
@@ -185,7 +179,7 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
       </div>
 
       {isUser && (
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-xs font-bold shrink-0 mt-1 text-white">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-xs font-bold shrink-0 mt-auto mb-1 text-white">
           U
         </div>
       )}
