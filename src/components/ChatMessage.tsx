@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { AlertCircle, Clock, Cpu, Copy, Check as CheckIcon } from 'lucide-react'
+import { AlertCircle, Clock, Cpu, Copy, Check as CheckIcon, Pencil } from 'lucide-react'
 import { memo, useState } from 'react'
 import type { Message } from '@/types'
 import { PROVIDER_INFO } from '@/types'
@@ -12,6 +12,7 @@ interface Props {
   message: Message
   animate?: boolean
   onScrollNeeded?: () => void
+  onEdit?: (messageId: string, newContent: string) => void
 }
 
 const mdComponents = {
@@ -51,16 +52,25 @@ function AssistantContent({ content, animate, onScrollNeeded }: { content: strin
   )
 }
 
-export const ChatMessage = memo(function ChatMessage({ message, animate = false, onScrollNeeded }: Props) {
+export const ChatMessage = memo(function ChatMessage({ message, animate = false, onScrollNeeded, onEdit }: Props) {
   const isUser = message.role === 'user'
   const isError = message.role === 'error'
   const [copied, setCopied] = useState(false)
   const [hovered, setHovered] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState(message.content)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleEditSubmit = () => {
+    if (editValue.trim() && editValue.trim() !== message.content) {
+      onEdit?.(message.id, editValue.trim())
+    }
+    setEditing(false)
   }
 
   return (
@@ -90,21 +100,61 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
           isError ? 'bg-red-500/10 border border-red-500/30 text-red-300 rounded-bl-sm' :
           'msg-ai text-slate-200 rounded-bl-sm'
         )}>
-          {isUser || isError ? (
+          {editing ? (
+            <div className="flex flex-col gap-2 min-w-[200px]">
+              <textarea
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEditSubmit() }
+                  if (e.key === 'Escape') setEditing(false)
+                }}
+                className="bg-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none resize-none w-full"
+                rows={Math.min(editValue.split('\n').length + 1, 6)}
+                autoFocus
+              />
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setEditing(false)}
+                  className="px-3 py-1 rounded-lg text-xs text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 transition-colors">
+                  Cancel
+                </button>
+                <button onClick={handleEditSubmit}
+                  className="px-3 py-1 rounded-lg text-xs text-white bg-violet-600 hover:bg-violet-500 transition-colors">
+                  Send
+                </button>
+              </div>
+            </div>
+          ) : isUser || isError ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
             <AssistantContent content={message.content} animate={animate} onScrollNeeded={onScrollNeeded} />
           )}
-          {/* Copy button */}
-          {!isError && (
-            <button
-              onClick={handleCopy}
-              style={{ opacity: hovered ? 1 : 0 }}
-              className="absolute -top-2 -right-2 transition-opacity duration-150 w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700"
-              title="Copy"
-            >
-              {copied ? <CheckIcon size={11} className="text-emerald-400" /> : <Copy size={11} />}
-            </button>
+
+          {/* Action buttons */}
+          {!isError && !editing && (
+            <>
+              {isUser && onEdit && (
+                <button
+                  onClick={() => { setEditValue(message.content); setEditing(true) }}
+                  style={{ opacity: hovered ? 1 : 0 }}
+                  className={cn(
+                    'absolute -top-2 transition-opacity duration-150 w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700',
+                    '-right-9'
+                  )}
+                  title="Edit"
+                >
+                  <Pencil size={11} />
+                </button>
+              )}
+              <button
+                onClick={handleCopy}
+                style={{ opacity: hovered ? 1 : 0 }}
+                className="absolute -top-2 -right-2 transition-opacity duration-150 w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700"
+                title="Copy"
+              >
+                {copied ? <CheckIcon size={11} className="text-emerald-400" /> : <Copy size={11} />}
+              </button>
+            </>
           )}
         </div>
 

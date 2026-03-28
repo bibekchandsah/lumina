@@ -23,6 +23,7 @@ interface AppStore {
   addMessage: (chatId: string, msg: Omit<Message, 'id' | 'timestamp'>) => void
   updateChatTitle: (chatId: string, title: string) => void
   activeChat: () => Chat | null
+  editMessage: (chatId: string, messageId: string, newContent: string) => void
 
   // Settings
   settings: AppSettings
@@ -133,6 +134,16 @@ export const useStore = create<AppStore>()(
       })),
       updateChatTitle: (chatId, title) => set(s => ({
         chats: s.chats.map(c => c.id === chatId ? { ...c, title } : c)
+      })),
+      // Truncate messages from messageId onward (keep messages before it)
+      editMessage: (chatId, messageId, _newContent) => set(s => ({
+        chats: s.chats.map(c => {
+          if (c.id !== chatId) return c
+          const idx = c.messages.findIndex(m => m.id === messageId)
+          if (idx === -1) return c
+          const trimmed = c.messages.slice(0, idx)
+          return { ...c, messages: trimmed, updatedAt: Date.now() }
+        })
       })),
       activeChat: () => {
         const { chats, activeChatId } = get()

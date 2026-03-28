@@ -10,6 +10,7 @@ import { cn } from '@/utils/cn'
 export function ChatWindow() {
   const { activeChatId, chats, createChat, isStreaming, streamingContent, keys, sidebarOpen, setSidebarOpen } = useStore()
   const { sendMessage } = useAI()
+  const editMessage = useStore(s => s.editMessage)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -56,6 +57,18 @@ export function ChatWindow() {
     })
     await result
   }
+
+  const handleEdit = useCallback((messageId: string, newContent: string) => {
+    if (!activeChatId || isStreaming) return
+    editMessage(activeChatId, messageId, newContent)
+    // Re-send with the edited content
+    setTimeout(() => sendMessage(activeChatId, newContent).then(() => {
+      const latestChat = useStore.getState().chats.find(c => c.id === activeChatId)
+      const lastMsg = latestChat?.messages.findLast(m => m.role === 'assistant')
+      if (lastMsg) setAnimatedIds(prev => new Set(prev).add(lastMsg.id))
+      textareaRef.current?.focus()
+    }), 0)
+  }, [activeChatId, isStreaming, editMessage, sendMessage])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
@@ -122,6 +135,7 @@ export function ChatWindow() {
                     message={msg}
                     animate={shouldAnimate}
                     onScrollNeeded={scrollToBottom}
+                    onEdit={handleEdit}
                   />
                 )
               })}
