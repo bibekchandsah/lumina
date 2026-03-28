@@ -13,8 +13,7 @@ export function ChatWindow() {
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  // Track which message IDs should animate (only ones added this session)
-  const animatedIdsRef = useRef<Set<string>>(new Set())
+  const [animatedIds, setAnimatedIds] = useState<Set<string>>(new Set())
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -52,7 +51,7 @@ export function ChatWindow() {
     result.then(() => {
       const latestChat = useStore.getState().chats.find(c => c.id === chatId)
       const lastMsg = latestChat?.messages.findLast(m => m.role === 'assistant')
-      if (lastMsg) animatedIdsRef.current.add(lastMsg.id)
+      if (lastMsg) setAnimatedIds(prev => new Set(prev).add(lastMsg.id))
       textareaRef.current?.focus()
     })
     await result
@@ -116,7 +115,7 @@ export function ChatWindow() {
           <>
             <AnimatePresence initial={false}>
               {chat.messages.map((msg) => {
-                const shouldAnimate = animatedIdsRef.current.has(msg.id)
+                const shouldAnimate = animatedIds.has(msg.id)
                 return (
                   <ChatMessage
                     key={msg.id}

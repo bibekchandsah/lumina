@@ -6,32 +6,48 @@ export function useTypewriter(
   enabled = true,
   onTick?: () => void
 ) {
-  const [displayed, setDisplayed] = useState(enabled ? '' : fullText)
+  const [displayed, setDisplayed] = useState('')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const indexRef = useRef(0)
   const onTickRef = useRef(onTick)
   onTickRef.current = onTick
 
-  const done = !enabled || displayed.length >= fullText.length
+  // When enabled flips true with text already present, start animating
+  // When fullText changes (new content), restart
+  const enabledRef = useRef(enabled)
 
   useEffect(() => {
-    if (!enabled) { setDisplayed(fullText); return }
+    if (timerRef.current) clearTimeout(timerRef.current)
 
-    indexRef.current = 0
+    if (!enabled) {
+      setDisplayed(fullText)
+      return
+    }
+
+    // Start fresh
     setDisplayed('')
+    let index = 0
 
     const tick = () => {
-      indexRef.current++
-      setDisplayed(fullText.slice(0, indexRef.current))
+      index++
+      const slice = fullText.slice(0, index)
+      setDisplayed(slice)
       onTickRef.current?.()
-      if (indexRef.current < fullText.length) {
+      if (index < fullText.length) {
         timerRef.current = setTimeout(tick, speed)
       }
     }
-    timerRef.current = setTimeout(tick, speed)
+
+    if (fullText.length > 0) {
+      timerRef.current = setTimeout(tick, speed)
+    }
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [fullText, speed, enabled])
+  // Only re-run when enabled flips or fullText changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullText, enabled, speed])
+
+  enabledRef.current = enabled
+  const done = !enabled || displayed.length >= fullText.length
 
   return { displayed, done }
 }
