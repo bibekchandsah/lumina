@@ -4,15 +4,28 @@ import { Sidebar } from './components/Sidebar'
 import { ChatWindow } from './components/ChatWindow'
 import { Settings } from './components/Settings'
 import { useStore } from './store'
+import { useAuth } from './hooks/useAuth'
+import { useFirestoreSync } from './hooks/useFirestoreSync'
 
 export default function App() {
   const { chats, activeChatId, setActiveChat, sidebarOpen } = useStore()
+  const { user, loading } = useAuth()
+
+  useFirestoreSync(user)
 
   useEffect(() => {
     if (chats.length > 0 && (!activeChatId || !chats.find(c => c.id === activeChatId))) {
       setActiveChat(chats[0].id)
     }
   }, [chats, activeChatId, setActiveChat])
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#0a0a0f]">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 animate-pulse" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#0a0a0f]">

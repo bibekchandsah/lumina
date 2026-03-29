@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore } from 'lucide-react'
+import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore, LogIn, LogOut, User } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/store'
 import { cn } from '@/utils/cn'
 import type { Chat } from '@/types'
+import { useAuth } from '@/hooks/useAuth'
 
 function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
   const { deleteChat, updateChatTitle, togglePin, toggleArchive, setActiveChat } = useStore()
@@ -118,6 +120,8 @@ function ChatItem({ chat }: { chat: Chat }) {
 
 export function Sidebar() {
   const { chats, createChat, setSettingsOpen, keys } = useStore()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const activeCount = keys.filter(k => k.status === 'active').length
 
   const pinned = chats.filter(c => c.pinned && !c.archived)
@@ -190,8 +194,30 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Settings */}
-      <div className="p-3 border-t border-white/10">
+      {/* Auth + Settings */}
+      <div className="p-3 border-t border-white/10 space-y-1">
+        {/* User info or login button */}
+        {user ? (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-white/10">
+            {user.photoURL
+              ? <img src={user.photoURL} className="w-6 h-6 rounded-full shrink-0" alt="" />
+              : <User size={14} className="text-slate-400 shrink-0" />
+            }
+            <span className="flex-1 text-xs text-slate-300 truncate">{user.displayName || user.email}</span>
+            <button onClick={logout} className="text-slate-600 hover:text-red-400 transition-colors" title="Sign out">
+              <LogOut size={13} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate('/login')}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white text-sm transition-all duration-200"
+          >
+            <LogIn size={16} />
+            Sign in / Create account
+          </button>
+        )}
+
         <button
           onClick={() => setSettingsOpen(true)}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white text-sm transition-all duration-200"
@@ -203,6 +229,8 @@ export function Sidebar() {
           )}
         </button>
       </div>
+
     </aside>
   )
 }
+

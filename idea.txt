@@ -25,6 +25,13 @@ git remote add origin https://github.com/bibekchandsah/lumina.git
 git branch -M main
 git push -u origin main
 
+Create a Firebase project
+    Go to console.firebase.google.com
+    New project 
+    security > authentication > get started → Enable Authentication (Google + Email/Password providers)
+    database & storage > firestore > create datablase > standard edition > next > next > start in production > create - Enable Firestore Database
+    Project Settings > general > your apps → Web app → register app > copy config values
+
 
 Dark glassmorphism UI with smooth Framer Motion animations
 Add/remove API keys for Gemini, Groq, and Grok with model selection
@@ -76,6 +83,12 @@ Settings
 
 Regenerate scrolls to the target message bubble and locks auto-scroll off, so you can watch the typewriter effect in place
 During streaming/generation, auto-scroll only fires if you're within 80px of the bottom — if you scroll up, it stops following and lets you read freely
+
+Replaces the user message content in-place
+Finds the next assistant message after it and regenerates it in-place (all messages below stay intact)
+Scrolls to the assistant bubble being regenerated so you can watch the typewriter effect
+If there's no assistant message after (e.g. last message), appends a new one as before
+
 
 give answer from muultiple modals
 (fixed) when it's answering user scroll top then it's not scrolling top
