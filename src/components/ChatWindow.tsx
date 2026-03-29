@@ -10,8 +10,8 @@ import { cn } from '@/utils/cn'
 export function ChatWindow() {
   const { activeChatId, chats, createChat, isStreaming, streamingContent, keys, sidebarOpen, setSidebarOpen, stopStreaming } = useStore()
   const { sendMessage, regenerate } = useAI()
-  const editMessage = useStore(s => s.editMessage)
   const getMessageContext = useStore(s => s.getMessageContext)
+  const getNextAssistantMessage = useStore(s => s.getNextAssistantMessage)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -104,14 +104,29 @@ export function ChatWindow() {
 
   const handleEdit = useCallback((messageId: string, newContent: string) => {
     if (!activeChatId || isStreaming) return
-    editMessage(activeChatId, messageId, newContent)
-    setTimeout(() => sendMessage(activeChatId, newContent).then(() => {
-      const latestChat = useStore.getState().chats.find(c => c.id === activeChatId)
-      const lastMsg = latestChat?.messages.findLast(m => m.role === 'assistant')
-      if (lastMsg) setAnimatedIds(prev => new Set(prev).add(lastMsg.id))
-      textareaRef.current?.focus()
-    }), 0)
-  }, [activeChatId, isStreaming, editMessage, sendMessage])
+    // Replace user message in-place
+    const { replaceMessage } = useStore.getState()
+    replaceMessage(activeChatId, messageId, newContent)
+    // Find the next assistant message after this user message and regenerate it in-place
+    const nextAssistantId = getNextAssistantMessage(activeChatId, messageId)
+    if (nextAssistantId) {
+      const el = document.querySelector(`[data-msg-id="${nextAssistantId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      isNearBottomRef.current = false
+      regenerate(activeChatId, nextAssistantId, newContent).then(() => {
+        setAnimatedIds(prev => new Set(prev).add(nextAssistantId))
+        textareaRef.current?.focus()
+      })
+    } else {
+      // No assistant message after — just append a new one
+      setTimeout(() => sendMessage(activeChatId, newContent).then(() => {
+        const latestChat = useStore.getState().chats.find(c => c.id === activeChatId)
+        const lastMsg = latestChat?.messages.findLast(m => m.role === 'assistant')
+        if (lastMsg) setAnimatedIds(prev => new Set(prev).add(lastMsg.id))
+        textareaRef.current?.focus()
+      }), 0)
+    }
+  }, [activeChatId, isStreaming, getNextAssistantMessage, regenerate, sendMessage])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }

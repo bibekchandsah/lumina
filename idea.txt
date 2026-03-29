@@ -35,6 +35,7 @@ Export/import keys as JSON
 Preferences panel (default provider, fallback toggle, streaming, retry count, cooldown)
 Keys stored in localStorage only, never sent anywhere except the AI providers directly
 Run npm run dev to test locally.
+npm run dev -- --port 5174
 
 
 'gemini-2.5-flash'
@@ -73,6 +74,9 @@ Settings
 🔊 Read aloud — uses Web Speech API to speak the message, turns into a stop (🔇) button while speaking
 🔄 Regenerate — removes the assistant message and re-sends the preceding user question, animates the new response with typewriter effect
 
+Regenerate scrolls to the target message bubble and locks auto-scroll off, so you can watch the typewriter effect in place
+During streaming/generation, auto-scroll only fires if you're within 80px of the bottom — if you scroll up, it stops following and lets you read freely
+
 give answer from muultiple modals
-when it's answering user scroll top then it's not scrolling top
+(fixed) when it's answering user scroll top then it's not scrolling top
 

@@ -28,6 +28,7 @@ interface AppStore {
   toggleArchive: (chatId: string) => void
   getMessageContext: (chatId: string, assistantMsgId: string) => string | null
   replaceMessage: (chatId: string, messageId: string, newContent: string) => void
+  getNextAssistantMessage: (chatId: string, userMsgId: string) => string | null
 
   // Settings
   settings: AppSettings
@@ -169,6 +170,17 @@ export const useStore = create<AppStore>()(
         }
         return null
       },
+      getNextAssistantMessage: (chatId, userMsgId) => {
+        const chat = get().chats.find(c => c.id === chatId)
+        if (!chat) return null
+        const idx = chat.messages.findIndex(m => m.id === userMsgId)
+        if (idx === -1) return null
+        for (let i = idx + 1; i < chat.messages.length; i++) {
+          if (chat.messages[i].role === 'assistant') return chat.messages[i].id
+        }
+        return null
+      },
+      // Replace user message content in-place (no truncation)
       replaceMessage: (chatId, messageId, newContent) => set(s => ({
         chats: s.chats.map(c => {
           if (c.id !== chatId) return c
