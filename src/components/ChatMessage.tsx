@@ -134,6 +134,7 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
+      data-msg-id={message.id}
       className={cn('flex gap-3 px-4 py-2', isUser ? 'justify-end' : 'justify-start')}
     >
       {!isUser && (

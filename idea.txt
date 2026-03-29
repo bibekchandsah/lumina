@@ -74,3 +74,5 @@ Settings
 🔄 Regenerate — removes the assistant message and re-sends the preceding user question, animates the new response with typewriter effect
 
 give answer from muultiple modals
+when it's answering user scroll top then it's not scrolling top
+

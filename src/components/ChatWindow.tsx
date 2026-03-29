@@ -9,7 +9,7 @@ import { cn } from '@/utils/cn'
 
 export function ChatWindow() {
   const { activeChatId, chats, createChat, isStreaming, streamingContent, keys, sidebarOpen, setSidebarOpen, stopStreaming } = useStore()
-  const { sendMessage } = useAI()
+  const { sendMessage, regenerate } = useAI()
   const editMessage = useStore(s => s.editMessage)
   const getMessageContext = useStore(s => s.getMessageContext)
   const [input, setInput] = useState('')
@@ -21,14 +21,17 @@ export function ChatWindow() {
   const [showScrollDown, setShowScrollDown] = useState(false)
   const [showScrollUp, setShowScrollUp] = useState(false)
 
+  // Track whether user is near bottom — only auto-scroll if they are
+  const isNearBottomRef = useRef(true)
+
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current
     if (!el) return
     const { scrollTop, scrollHeight, clientHeight } = el
-    const threshold = clientHeight
     const distFromBottom = scrollHeight - scrollTop - clientHeight
+    const threshold = clientHeight
+    isNearBottomRef.current = distFromBottom < 80
     setShowScrollDown(distFromBottom > threshold)
-    // Only show "go to top" when user has scrolled up (away from bottom)
     setShowScrollUp(scrollTop > threshold && distFromBottom > 50)
   }, [])
 
@@ -38,6 +41,13 @@ export function ChatWindow() {
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
+
+  // Smart scroll — only scroll to bottom if user is already near bottom
+  const smartScrollToBottom = useCallback(() => {
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [])
 
   const chat = chats.find(c => c.id === activeChatId) ?? null
@@ -54,10 +64,10 @@ export function ChatWindow() {
     }
   }, [isStreaming])
 
-  // Scroll to bottom on new messages, streaming content, or typewriter progress
+  // Auto-scroll on new messages only if near bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chat?.messages.length, streamingContent])
+    smartScrollToBottom()
+  }, [chat?.messages.length, streamingContent, smartScrollToBottom])
 
   const hasKeys = keys.some(k => k.status === 'active')
 
@@ -82,14 +92,15 @@ export function ChatWindow() {
     if (!activeChatId || isStreaming) return
     const userContent = getMessageContext(activeChatId, assistantMsgId)
     if (!userContent) return
-    editMessage(activeChatId, assistantMsgId, '')
-    setTimeout(() => sendMessage(activeChatId, userContent).then(() => {
-      const latestChat = useStore.getState().chats.find(c => c.id === activeChatId)
-      const lastMsg = latestChat?.messages.findLast(m => m.role === 'assistant')
-      if (lastMsg) setAnimatedIds(prev => new Set(prev).add(lastMsg.id))
+    // Scroll to the message being regenerated
+    const el = document.querySelector(`[data-msg-id="${assistantMsgId}"]`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    isNearBottomRef.current = false // prevent auto-scroll hijacking
+    regenerate(activeChatId, assistantMsgId, userContent).then(() => {
+      setAnimatedIds(prev => new Set(prev).add(assistantMsgId))
       textareaRef.current?.focus()
-    }), 0)
-  }, [activeChatId, isStreaming, editMessage, getMessageContext, sendMessage])
+    })
+  }, [activeChatId, isStreaming, getMessageContext, regenerate])
 
   const handleEdit = useCallback((messageId: string, newContent: string) => {
     if (!activeChatId || isStreaming) return
@@ -167,7 +178,7 @@ export function ChatWindow() {
                     key={msg.id}
                     message={msg}
                     animate={shouldAnimate}
-                    onScrollNeeded={scrollToBottom}
+                    onScrollNeeded={smartScrollToBottom}
                     onEdit={handleEdit}
                     onRegenerate={handleRegenerate}
                   />

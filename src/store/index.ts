@@ -27,6 +27,7 @@ interface AppStore {
   togglePin: (chatId: string) => void
   toggleArchive: (chatId: string) => void
   getMessageContext: (chatId: string, assistantMsgId: string) => string | null
+  replaceMessage: (chatId: string, messageId: string, newContent: string) => void
 
   // Settings
   settings: AppSettings
@@ -163,12 +164,23 @@ export const useStore = create<AppStore>()(
         if (!chat) return null
         const idx = chat.messages.findIndex(m => m.id === assistantMsgId)
         if (idx <= 0) return null
-        // Walk back to find the nearest user message
         for (let i = idx - 1; i >= 0; i--) {
           if (chat.messages[i].role === 'user') return chat.messages[i].content
         }
         return null
       },
+      replaceMessage: (chatId, messageId, newContent) => set(s => ({
+        chats: s.chats.map(c => {
+          if (c.id !== chatId) return c
+          return {
+            ...c,
+            messages: c.messages.map(m =>
+              m.id === messageId ? { ...m, content: newContent, timestamp: Date.now() } : m
+            ),
+            updatedAt: Date.now(),
+          }
+        })
+      })),
       activeChat: () => {
         const { chats, activeChatId } = get()
         return chats.find(c => c.id === activeChatId) ?? null
