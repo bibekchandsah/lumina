@@ -110,6 +110,10 @@ Now when a user logs in on any device, their API keys sync automatically from Fi
 
 This single rule covers both /users/{uid}/chats/{chatId} and /users/{uid}/keys/{keyId} — any subcollection under a user's document is only accessible by that user when authenticated.
 
+Three-dot menu → Share → saves chat to /shared/{uuid} in Firestore, copies the link to clipboard, shows "Link copied!"
+Anyone with the link opens /share/:id — a clean read-only page showing the full conversation with a "Try Lumina" CTA
+No login required to view a shared chat
+
 give answer from muultiple modals
 (fixed) when it's answering user scroll top then it's not scrolling top
 
