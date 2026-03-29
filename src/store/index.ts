@@ -157,6 +157,18 @@ export const useStore = create<AppStore>()(
       toggleArchive: (chatId) => set(s => ({
         chats: s.chats.map(c => c.id === chatId ? { ...c, archived: !c.archived } : c)
       })),
+      // Returns the user message content that preceded a given assistant message
+      getMessageContext: (chatId, assistantMsgId) => {
+        const chat = get().chats.find(c => c.id === chatId)
+        if (!chat) return null
+        const idx = chat.messages.findIndex(m => m.id === assistantMsgId)
+        if (idx <= 0) return null
+        // Walk back to find the nearest user message
+        for (let i = idx - 1; i >= 0; i--) {
+          if (chat.messages[i].role === 'user') return chat.messages[i].content
+        }
+        return null
+      },
       activeChat: () => {
         const { chats, activeChatId } = get()
         return chats.find(c => c.id === activeChatId) ?? null

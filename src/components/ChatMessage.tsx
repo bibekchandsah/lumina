@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { AlertCircle, Clock, Cpu, Copy, Check as CheckIcon, Pencil } from 'lucide-react'
-import { memo, useState } from 'react'
+import { AlertCircle, Clock, Cpu, Copy, Check as CheckIcon, Pencil, Volume2, VolumeX, RefreshCw } from 'lucide-react'
+import { memo, useState, useRef } from 'react'
 import type { Message } from '@/types'
 import { PROVIDER_INFO } from '@/types'
 import { cn } from '@/utils/cn'
@@ -13,6 +13,7 @@ interface Props {
   animate?: boolean
   onScrollNeeded?: () => void
   onEdit?: (messageId: string, newContent: string) => void
+  onRegenerate?: (messageId: string) => void
 }
 
 const mdComponents = {
@@ -47,18 +48,34 @@ function AssistantContent({ content, animate, onScrollNeeded }: { content: strin
   )
 }
 
-export const ChatMessage = memo(function ChatMessage({ message, animate = false, onScrollNeeded, onEdit }: Props) {
+export const ChatMessage = memo(function ChatMessage({ message, animate = false, onScrollNeeded, onEdit, onRegenerate }: Props) {
   const isUser = message.role === 'user'
   const isError = message.role === 'error'
   const [copied, setCopied] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(message.content)
+  const [speaking, setSpeaking] = useState(false)
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSpeak = () => {
+    if (speaking) {
+      window.speechSynthesis.cancel()
+      setSpeaking(false)
+      return
+    }
+    const utterance = new SpeechSynthesisUtterance(message.content)
+    utterance.onend = () => setSpeaking(false)
+    utterance.onerror = () => setSpeaking(false)
+    utteranceRef.current = utterance
+    window.speechSynthesis.speak(utterance)
+    setSpeaking(true)
   }
 
   const handleEditSubmit = () => {
@@ -85,6 +102,29 @@ export const ChatMessage = memo(function ChatMessage({ message, animate = false,
         >
           <Pencil size={11} />
         </button>
+      )}
+      {!isUser && (
+        <>
+          <button onClick={handleSpeak}
+            className={cn(
+              'w-6 h-6 rounded-lg border flex items-center justify-center transition-colors',
+              speaking
+                ? 'bg-violet-600/30 border-violet-500/40 text-violet-300'
+                : 'bg-slate-800 border-white/10 text-slate-400 hover:text-white hover:bg-slate-700'
+            )}
+            title={speaking ? 'Stop reading' : 'Read aloud'}
+          >
+            {speaking ? <VolumeX size={11} /> : <Volume2 size={11} />}
+          </button>
+          {onRegenerate && (
+            <button onClick={() => onRegenerate(message.id)}
+              className="w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+              title="Regenerate response"
+            >
+              <RefreshCw size={11} />
+            </button>
+          )}
+        </>
       )}
     </div>
   ) : null

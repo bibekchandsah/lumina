@@ -70,4 +70,7 @@ Settings
     Export/import keys as JSON
     Preferences (fallback, streaming, retry, cooldown)
 
+🔊 Read aloud — uses Web Speech API to speak the message, turns into a stop (🔇) button while speaking
+🔄 Regenerate — removes the assistant message and re-sends the preceding user question, animates the new response with typewriter effect
+
 give answer from muultiple modals

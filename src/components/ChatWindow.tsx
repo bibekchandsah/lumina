@@ -11,6 +11,7 @@ export function ChatWindow() {
   const { activeChatId, chats, createChat, isStreaming, streamingContent, keys, sidebarOpen, setSidebarOpen, stopStreaming } = useStore()
   const { sendMessage } = useAI()
   const editMessage = useStore(s => s.editMessage)
+  const getMessageContext = useStore(s => s.getMessageContext)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -77,10 +78,22 @@ export function ChatWindow() {
     await result
   }
 
+  const handleRegenerate = useCallback((assistantMsgId: string) => {
+    if (!activeChatId || isStreaming) return
+    const userContent = getMessageContext(activeChatId, assistantMsgId)
+    if (!userContent) return
+    editMessage(activeChatId, assistantMsgId, '')
+    setTimeout(() => sendMessage(activeChatId, userContent).then(() => {
+      const latestChat = useStore.getState().chats.find(c => c.id === activeChatId)
+      const lastMsg = latestChat?.messages.findLast(m => m.role === 'assistant')
+      if (lastMsg) setAnimatedIds(prev => new Set(prev).add(lastMsg.id))
+      textareaRef.current?.focus()
+    }), 0)
+  }, [activeChatId, isStreaming, editMessage, getMessageContext, sendMessage])
+
   const handleEdit = useCallback((messageId: string, newContent: string) => {
     if (!activeChatId || isStreaming) return
     editMessage(activeChatId, messageId, newContent)
-    // Re-send with the edited content
     setTimeout(() => sendMessage(activeChatId, newContent).then(() => {
       const latestChat = useStore.getState().chats.find(c => c.id === activeChatId)
       const lastMsg = latestChat?.messages.findLast(m => m.role === 'assistant')
@@ -156,6 +169,7 @@ export function ChatWindow() {
                     animate={shouldAnimate}
                     onScrollNeeded={scrollToBottom}
                     onEdit={handleEdit}
+                    onRegenerate={handleRegenerate}
                   />
                 )
               })}
