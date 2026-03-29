@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore, LogIn, LogOut, User, Share2 } from 'lucide-react'
+import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore, LogIn, LogOut, User, Share2, GitCompare } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/store'
 import { cn } from '@/utils/cn'
@@ -256,6 +256,13 @@ export function Sidebar() {
           {keys.filter(k => k.status === 'failed').length > 0 && (
             <span className="ml-auto w-2 h-2 rounded-full bg-red-500" />
           )}
+        </button>
+        <button
+          onClick={() => navigate('/compare')}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white text-sm transition-all duration-200"
+        >
+          <GitCompare size={16} />
+          Compare Models
         </button>
       </div>
 

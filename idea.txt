@@ -114,6 +114,25 @@ Three-dot menu → Share → saves chat to /shared/{uuid} in Firestore, copies t
 Anyone with the link opens /share/:id — a clean read-only page showing the full conversation with a "Try Lumina" CTA
 No login required to view a shared chat
 
+Chat without login → stored in Zustand/localStorage as normal
+Click sign in → local chats/keys are snapshotted to lumina-local-backup in localStorage
+Firebase loads cloud chats/keys into the store
+Logout → cloud data is replaced with the pre-login local snapshot, backup is cleaned up
+
+The Compare Models page is live at /compare — accessible via the sidebar button. Here's what it does:
+    Up to 4 side-by-side panels, each with its own provider + model + key selector
+    Type a prompt once, hit Enter — all panels run simultaneously
+    Live streaming in each panel with a typing cursor
+    Stats per panel: latency, token count, tokens/second
+    Copy button per panel
+    Stop button cancels all in-flight requests
+    Panels can be added/removed dynamically
+
 give answer from muultiple modals
 (fixed) when it's answering user scroll top then it's not scrolling top
+when user loads then it shows last chat, it should show blank 
 
+Search chats — filter sidebar by keyword across all chat titles and messages
+Keyboard shortcuts — Ctrl+K to search, Ctrl+N new chat, Ctrl+/ toggle sidebar
+System prompt / persona — let user set a custom instruction that prepends every conversation
+Prompt templates — save and reuse common prompts
