@@ -1,31 +1,129 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Plus, Trash2, Settings, Zap, Pencil, Check, X } from 'lucide-react'
+import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore } from 'lucide-react'
 import { useStore } from '@/store'
 import { cn } from '@/utils/cn'
+import type { Chat } from '@/types'
+
+function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
+  const { deleteChat, updateChatTitle, togglePin, toggleArchive, setActiveChat } = useStore()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState(chat.title)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  if (editing) return (
+    <div ref={ref} className="absolute right-0 top-8 z-50 w-52 glass-dark border border-white/10 rounded-xl p-3 shadow-xl space-y-2">
+      <input
+        value={editValue}
+        onChange={e => setEditValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { updateChatTitle(chat.id, editValue.trim() || chat.title); onClose() }
+          if (e.key === 'Escape') onClose()
+        }}
+        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500/50"
+        autoFocus
+      />
+      <div className="flex gap-2">
+        <button onClick={() => { updateChatTitle(chat.id, editValue.trim() || chat.title); onClose() }}
+          className="flex-1 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs transition-colors">Save</button>
+        <button onClick={onClose}
+          className="px-3 py-1.5 rounded-lg glass hover:bg-white/10 text-slate-400 text-xs transition-colors">Cancel</button>
+      </div>
+    </div>
+  )
+
+  if (confirmDelete) return (
+    <div ref={ref} className="absolute right-0 top-8 z-50 w-48 glass-dark border border-white/10 rounded-xl p-3 shadow-xl space-y-2">
+      <p className="text-xs text-slate-300">Delete this chat?</p>
+      <div className="flex gap-2">
+        <button onClick={() => { deleteChat(chat.id); onClose() }}
+          className="flex-1 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs transition-colors">Delete</button>
+        <button onClick={() => setConfirmDelete(false)}
+          className="px-3 py-1.5 rounded-lg glass hover:bg-white/10 text-slate-400 text-xs transition-colors">Cancel</button>
+      </div>
+    </div>
+  )
+
+  const items = [
+    { icon: Pencil, label: 'Rename', action: () => setEditing(true) },
+    { icon: chat.pinned ? PinOff : Pin, label: chat.pinned ? 'Unpin' : 'Pin', action: () => { togglePin(chat.id); onClose() } },
+    { icon: chat.archived ? ArchiveRestore : Archive, label: chat.archived ? 'Unarchive' : 'Archive', action: () => { toggleArchive(chat.id); if (chat.archived) setActiveChat(chat.id); onClose() } },
+    { icon: Trash2, label: 'Delete', action: () => setConfirmDelete(true), danger: true },
+  ]
+
+  return (
+    <div ref={ref} className="absolute right-0 top-8 z-50 w-44 glass-dark border border-white/10 rounded-xl py-1 shadow-xl overflow-hidden">
+      {items.map(({ icon: Icon, label, action, danger }) => (
+        <button key={label} onClick={action}
+          className={cn('w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors text-left',
+            danger ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-300 hover:bg-white/8'
+          )}
+          onMouseEnter={e => { if (!danger) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)' }}
+          onMouseLeave={e => { if (!danger) (e.currentTarget as HTMLElement).style.background = '' }}
+        >
+          <Icon size={13} /> {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function ChatItem({ chat }: { chat: Chat }) {
+  const { activeChatId, setActiveChat } = useStore()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const isActive = activeChatId === chat.id
+
+  return (
+    <motion.div
+      key={chat.id}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -10 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false) }}
+      onClick={() => setActiveChat(chat.id)}
+      className={cn(
+        'relative group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 text-sm cursor-pointer',
+        isActive ? 'bg-violet-600/25 border border-violet-500/30 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'
+      )}
+    >
+      <MessageSquare size={14} className="shrink-0" />
+      <span className="flex-1 truncate">{chat.title}</span>
+      {chat.pinned && <Pin size={10} className="text-violet-400 shrink-0" />}
+
+      {/* Three-dot menu button */}
+      <button
+        onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}
+        style={{ opacity: hovered || menuOpen ? 1 : 0 }}
+        className="p-0.5 rounded-md hover:bg-white/10 text-slate-500 hover:text-white transition-all shrink-0"
+      >
+        <MoreHorizontal size={14} />
+      </button>
+
+      {/* Dropdown menu */}
+      {menuOpen && <ChatMenu chat={chat} onClose={() => setMenuOpen(false)} />}
+    </motion.div>
+  )
+}
 
 export function Sidebar() {
-  const { chats, activeChatId, createChat, deleteChat, setActiveChat, setSettingsOpen, keys, updateChatTitle } = useStore()
+  const { chats, createChat, setSettingsOpen, keys } = useStore()
   const activeCount = keys.filter(k => k.status === 'active').length
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
-  const startEdit = (id: string, title: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setEditingId(id)
-    setEditValue(title)
-    setTimeout(() => inputRef.current?.select(), 50)
-  }
-
-  const commitEdit = (id: string) => {
-    if (editValue.trim()) updateChatTitle(id, editValue.trim())
-    setEditingId(null)
-  }
-
-  const cancelEdit = () => setEditingId(null)
+  const pinned = chats.filter(c => c.pinned && !c.archived)
+  const regular = chats.filter(c => !c.pinned && !c.archived)
+  const archived = chats.filter(c => c.archived)
+  const [showArchived, setShowArchived] = useState(false)
 
   return (
     <aside className="w-64 flex flex-col h-full glass-dark border-r border-white/10">
@@ -46,105 +144,49 @@ export function Sidebar() {
       <div className="p-3">
         <button
           onClick={() => createChat()}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-sm transition-all duration-200 hover:scale-[1.02]"
         >
-          <Plus size={16} />
-          New Chat
+          <Plus size={16} /> New Chat
         </button>
       </div>
 
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto px-2 space-y-1">
+        {/* Pinned */}
+        {pinned.length > 0 && (
+          <>
+            <p className="text-xs text-slate-600 px-2 pt-1 pb-0.5 uppercase tracking-wider">Pinned</p>
+            <AnimatePresence>
+              {pinned.map(chat => <ChatItem key={chat.id} chat={chat} />)}
+            </AnimatePresence>
+            {regular.length > 0 && <div className="border-t border-white/5 my-1" />}
+          </>
+        )}
+
+        {/* Regular */}
         <AnimatePresence>
-          {chats.map(chat => (
-            <motion.div
-              key={chat.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              onMouseEnter={() => setHoveredId(chat.id)}
-              onMouseLeave={() => { setHoveredId(null); setConfirmDeleteId(null) }}
-              onClick={() => editingId !== chat.id && setActiveChat(chat.id)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 text-sm',
-                editingId === chat.id
-                  ? 'bg-violet-600/20 border border-violet-500/30'
-                  : activeChatId === chat.id
-                    ? 'bg-violet-600/25 border border-violet-500/30 text-white cursor-pointer'
-                    : 'hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer'
-              )}
-            >
-              <MessageSquare size={14} className="shrink-0 text-current" />
-
-              {editingId === chat.id ? (
-                <input
-                  ref={inputRef}
-                  value={editValue}
-                  onChange={e => setEditValue(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') commitEdit(chat.id)
-                    if (e.key === 'Escape') cancelEdit()
-                  }}
-                  onClick={e => e.stopPropagation()}
-                  className="flex-1 bg-transparent outline-none text-white text-sm min-w-0"
-                  autoFocus
-                />
-              ) : (
-                <span className="flex-1 truncate" onDoubleClick={e => startEdit(chat.id, chat.title, e)}>
-                  {chat.title}
-                </span>
-              )}
-
-              <div className="flex items-center gap-0.5 shrink-0">
-                {editingId === chat.id ? (
-                  <>
-                    <button onClick={e => { e.stopPropagation(); commitEdit(chat.id) }}
-                      className="p-1 rounded hover:text-emerald-400 text-slate-400 transition-colors">
-                      <Check size={13} />
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); cancelEdit() }}
-                      className="p-1 rounded hover:text-red-400 text-slate-400 transition-colors">
-                      <X size={13} />
-                    </button>
-                  </>
-                ) : confirmDeleteId === chat.id ? (
-                  <>
-                    <span className="text-xs text-red-400 mr-1">Delete?</span>
-                    <button
-                      onClick={e => { e.stopPropagation(); deleteChat(chat.id); setConfirmDeleteId(null) }}
-                      className="p-1 rounded text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      <Check size={12} />
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); setConfirmDeleteId(null) }}
-                      className="p-1 rounded text-slate-500 hover:text-white transition-colors"
-                    >
-                      <X size={12} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={e => startEdit(chat.id, chat.title, e)}
-                      className={cn('p-1 rounded hover:text-violet-400 text-slate-500 transition-all duration-150', hoveredId === chat.id ? 'opacity-100' : 'opacity-0')}
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); setConfirmDeleteId(chat.id) }}
-                      className={cn('p-1 rounded hover:text-red-400 text-slate-500 transition-all duration-150', hoveredId === chat.id ? 'opacity-100' : 'opacity-0')}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          ))}
+          {regular.map(chat => <ChatItem key={chat.id} chat={chat} />)}
         </AnimatePresence>
-        {chats.length === 0 && (
+
+        {chats.filter(c => !c.archived).length === 0 && (
           <p className="text-center text-slate-600 text-xs py-8">No chats yet</p>
+        )}
+
+        {/* Archived */}
+        {archived.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowArchived(s => !s)}
+              className="w-full flex items-center gap-2 px-2 py-1 text-xs text-slate-600 hover:text-slate-400 transition-colors mt-2"
+            >
+              <Archive size={11} />
+              Archived ({archived.length})
+              <Check size={10} className={cn('ml-auto transition-transform', showArchived ? 'rotate-0' : '-rotate-90')} />
+            </button>
+            <AnimatePresence>
+              {showArchived && archived.map(chat => <ChatItem key={chat.id} chat={chat} />)}
+            </AnimatePresence>
+          </>
         )}
       </div>
 
@@ -152,7 +194,7 @@ export function Sidebar() {
       <div className="p-3 border-t border-white/10">
         <button
           onClick={() => setSettingsOpen(true)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white text-sm transition-all duration-200 cursor-pointer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white text-sm transition-all duration-200"
         >
           <Settings size={16} />
           Settings & API Keys

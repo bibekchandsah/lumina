@@ -52,4 +52,22 @@ Scroll-to-bottom fires on every typewriter tick via onScrollNeeded callback
 add edit icon so that user can edit asked question 
 add scroll to bottom and top icon 
 
+Core
+    Multi-provider AI (Gemini, Groq, Grok) with auto-fallback, retry, cooldown
+    Streaming responses with typewriter effect
+    Stop generation mid-response
+Chat
+    Sidebar toggle, create/delete/rename chats
+    Pin, archive, three-dot context menu per chat
+    Edit user messages (re-sends with fresh answer)
+    Copy button on all messages
+    Scroll to top/bottom buttons
+    Auto-focus textarea
+Settings
+    Add/edit/remove API keys per provider
+    Model selector + custom model input
+    Usage stats per key
+    Export/import keys as JSON
+    Preferences (fallback, streaming, retry, cooldown)
+
 give answer from muultiple modals

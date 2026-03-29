@@ -24,6 +24,9 @@ interface AppStore {
   updateChatTitle: (chatId: string, title: string) => void
   activeChat: () => Chat | null
   editMessage: (chatId: string, messageId: string, newContent: string) => void
+  togglePin: (chatId: string) => void
+  toggleArchive: (chatId: string) => void
+  getMessageContext: (chatId: string, assistantMsgId: string) => string | null
 
   // Settings
   settings: AppSettings
@@ -147,6 +150,12 @@ export const useStore = create<AppStore>()(
           const trimmed = c.messages.slice(0, idx)
           return { ...c, messages: trimmed, updatedAt: Date.now() }
         })
+      })),
+      togglePin: (chatId) => set(s => ({
+        chats: s.chats.map(c => c.id === chatId ? { ...c, pinned: !c.pinned } : c)
+      })),
+      toggleArchive: (chatId) => set(s => ({
+        chats: s.chats.map(c => c.id === chatId ? { ...c, archived: !c.archived } : c)
       })),
       activeChat: () => {
         const { chats, activeChatId } = get()
