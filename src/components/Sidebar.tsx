@@ -1,18 +1,38 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore, LogIn, LogOut, User } from 'lucide-react'
+import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore, LogIn, LogOut, User, Share2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/store'
 import { cn } from '@/utils/cn'
 import type { Chat } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
+import { db, isConfigured } from '@/services/firebase'
+import { doc, setDoc } from 'firebase/firestore'
 
 function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
   const { deleteChat, updateChatTitle, togglePin, toggleArchive, setActiveChat } = useStore()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(chat.title)
+  const [sharing, setSharing] = useState(false)
+  const [shareUrl, setShareUrl] = useState('')
   const ref = useRef<HTMLDivElement>(null)
+
+  const handleShare = async () => {
+    if (!isConfigured || !db) {
+      alert('Sharing requires Firebase to be configured.')
+      return
+    }
+    setSharing(true)
+    try {
+      const shareId = crypto.randomUUID()
+      await setDoc(doc(db, 'shared', shareId), { ...chat, sharedAt: Date.now() })
+      const url = `${window.location.origin}/share/${shareId}`
+      setShareUrl(url)
+      await navigator.clipboard.writeText(url)
+    } catch { alert('Failed to create share link.') }
+    finally { setSharing(false) }
+  }
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -23,7 +43,7 @@ function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
   }, [onClose])
 
   if (editing) return (
-    <div ref={ref} className="absolute right-0 top-8 z-50 w-52 glass-dark border border-white/10 rounded-xl p-3 shadow-xl space-y-2">
+    <div ref={ref} className="absolute right-0 top-8 z-50 w-52 bg-[#1a1a2e] border border-white/15 rounded-xl p-3 shadow-2xl space-y-2">
       <input
         value={editValue}
         onChange={e => setEditValue(e.target.value)}
@@ -43,8 +63,16 @@ function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
     </div>
   )
 
+  if (shareUrl) return (
+    <div ref={ref} className="absolute right-0 top-8 z-50 w-56 bg-[#1a1a2e] border border-white/15 rounded-xl p-3 shadow-2xl space-y-2">
+      <p className="text-xs text-emerald-400 font-medium">Link copied!</p>
+      <p className="text-xs text-slate-500 break-all">{shareUrl}</p>
+      <button onClick={onClose} className="w-full py-1.5 rounded-lg glass hover:bg-white/10 text-slate-400 text-xs transition-colors">Close</button>
+    </div>
+  )
+
   if (confirmDelete) return (
-    <div ref={ref} className="absolute right-0 top-8 z-50 w-48 glass-dark border border-white/10 rounded-xl p-3 shadow-xl space-y-2">
+    <div ref={ref} className="absolute right-0 top-8 z-50 w-48 bg-[#1a1a2e] border border-white/15 rounded-xl p-3 shadow-2xl space-y-2">
       <p className="text-xs text-slate-300">Delete this chat?</p>
       <div className="flex gap-2">
         <button onClick={() => { deleteChat(chat.id); onClose() }}
@@ -59,17 +87,18 @@ function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
     { icon: Pencil, label: 'Rename', action: () => setEditing(true) },
     { icon: chat.pinned ? PinOff : Pin, label: chat.pinned ? 'Unpin' : 'Pin', action: () => { togglePin(chat.id); onClose() } },
     { icon: chat.archived ? ArchiveRestore : Archive, label: chat.archived ? 'Unarchive' : 'Archive', action: () => { toggleArchive(chat.id); if (chat.archived) setActiveChat(chat.id); onClose() } },
+    { icon: Share2, label: sharing ? 'Sharing…' : 'Share', action: handleShare },
     { icon: Trash2, label: 'Delete', action: () => setConfirmDelete(true), danger: true },
   ]
 
   return (
-    <div ref={ref} className="absolute right-0 top-8 z-50 w-44 glass-dark border border-white/10 rounded-xl py-1 shadow-xl overflow-hidden">
+    <div ref={ref} className="absolute right-0 top-8 z-50 w-44 bg-[#1a1a2e] border border-white/15 rounded-xl py-1 shadow-2xl overflow-hidden">
       {items.map(({ icon: Icon, label, action, danger }) => (
         <button key={label} onClick={action}
           className={cn('w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors text-left',
             danger ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-300 hover:bg-white/8'
           )}
-          onMouseEnter={e => { if (!danger) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)' }}
+          onMouseEnter={e => { if (!danger) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)' }}
           onMouseLeave={e => { if (!danger) (e.currentTarget as HTMLElement).style.background = '' }}
         >
           <Icon size={13} /> {label}

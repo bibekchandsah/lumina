@@ -31,6 +31,16 @@ Create a Firebase project
     security > authentication > get started → Enable Authentication (Google + Email/Password providers)
     database & storage > firestore > create datablase > standard edition > next > next > start in production > create - Enable Firestore Database
     Project Settings > general > your apps → Web app → register app > copy config values
+    Firebase Console → Firestore Database → Rules and replace everything with:
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{collection}/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
 
 
 Dark glassmorphism UI with smooth Framer Motion animations
@@ -89,6 +99,16 @@ Finds the next assistant message after it and regenerates it in-place (all messa
 Scrolls to the assistant bubble being regenerated so you can watch the typewriter effect
 If there's no assistant message after (e.g. last message), appends a new one as before
 
+The "Sign in" button is now always visible at the bottom of the sidebar. Clicking it opens a modal that:
+    If Firebase is configured → shows Google + email/password login
+    If Firebase is not configured → shows a message explaining how to set it up, with chats still working via localStorage
+Once signed in, the user's name/avatar shows in the sidebar with a sign-out button.
+
+Now clicking "Sign in / Create account" in the sidebar navigates to /login — a full-page auth screen with background glow, Google button, email/password form, and a back button to return to chat. After successful login it redirects back to /.
+
+Now when a user logs in on any device, their API keys sync automatically from Firestore — no need to re-enter them. Keys added/removed on one device propagate to all others within ~1.5 seconds.
+
+This single rule covers both /users/{uid}/chats/{chatId} and /users/{uid}/keys/{keyId} — any subcollection under a user's document is only accessible by that user when authenticated.
 
 give answer from muultiple modals
 (fixed) when it's answering user scroll top then it's not scrolling top

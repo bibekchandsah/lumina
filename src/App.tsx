@@ -28,8 +28,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0a0a0f]">
-      <AnimatePresence initial={false}>
+    <div className="flex h-screen w-screen overflow-hidden bg-[#0a0a0f]">      <AnimatePresence initial={false}>
         {sidebarOpen && (
           <motion.div
             key="sidebar"
