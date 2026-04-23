@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore, LogIn, LogOut, User, Share2, GitCompare } from 'lucide-react'
+import { MessageSquare, Plus, Settings, Zap, Pencil, Check, MoreHorizontal, Trash2, Pin, PinOff, Archive, ArchiveRestore, LogIn, LogOut, User, Share2, GitCompare, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/store'
 import { cn } from '@/utils/cn'
@@ -174,11 +174,21 @@ export function Sidebar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const activeCount = keys.filter(k => k.status === 'active').length
+  const [searchQuery, setSearchQuery] = useState('')
 
-  const pinned = chats.filter(c => c.pinned && !c.archived && !c.compareMode)
-  const regular = chats.filter(c => !c.pinned && !c.archived && !c.compareMode)
-  const archived = chats.filter(c => c.archived && !c.compareMode)
-  const compareChats = chats.filter(c => c.compareMode)
+  const filteredChats = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return chats
+    return chats.filter(chat => {
+      if (chat.title.toLowerCase().includes(query)) return true
+      return chat.messages.some(msg => msg.content.toLowerCase().includes(query))
+    })
+  }, [chats, searchQuery])
+
+  const pinned = filteredChats.filter(c => c.pinned && !c.archived && !c.compareMode)
+  const regular = filteredChats.filter(c => !c.pinned && !c.archived && !c.compareMode)
+  const archived = filteredChats.filter(c => c.archived && !c.compareMode)
+  const compareChats = filteredChats.filter(c => c.compareMode)
   const [showArchived, setShowArchived] = useState(false)
   const [showCompare, setShowCompare] = useState(true)
 
@@ -207,6 +217,19 @@ export function Sidebar() {
         </button>
       </div>
 
+      {/* Search */}
+      <div className="px-3 pb-2">
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 focus-within:border-violet-500/40 transition-colors">
+          <Search size={14} className="text-slate-500 shrink-0" />
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search chats"
+            className="w-full bg-transparent text-xs text-slate-200 placeholder:text-slate-600 outline-none"
+          />
+        </div>
+      </div>
+
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto px-2 space-y-1">
         {/* Pinned */}
@@ -225,8 +248,8 @@ export function Sidebar() {
           {regular.map(chat => <ChatItem key={chat.id} chat={chat} />)}
         </AnimatePresence>
 
-        {chats.filter(c => !c.archived).length === 0 && (
-          <p className="text-center text-slate-600 text-xs py-8">No chats yet</p>
+        {filteredChats.filter(c => !c.archived && !c.compareMode).length === 0 && (
+          <p className="text-center text-slate-600 text-xs py-8">{searchQuery.trim() ? 'No matching chats' : 'No chats yet'}</p>
         )}
 
         {/* Archived */}
