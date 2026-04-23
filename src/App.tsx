@@ -8,16 +8,17 @@ import { useAuth } from './hooks/useAuth'
 import { useFirestoreSync } from './hooks/useFirestoreSync'
 
 export default function App() {
-  const { chats, activeChatId, setActiveChat, sidebarOpen } = useStore()
+  const { sidebarOpen, chats, activeChatId, rememberedActiveChatId, setActiveChat } = useStore()
   const { user, loading } = useAuth()
 
   useFirestoreSync(user)
 
   useEffect(() => {
-    if (chats.length > 0 && (!activeChatId || !chats.find(c => c.id === activeChatId))) {
-      setActiveChat(chats[0].id)
+    if (activeChatId || !rememberedActiveChatId) return
+    if (chats.find(c => c.id === rememberedActiveChatId)) {
+      setActiveChat(rememberedActiveChatId)
     }
-  }, [chats, activeChatId, setActiveChat])
+  }, [activeChatId, rememberedActiveChatId, chats, setActiveChat])
 
   if (loading) {
     return (

@@ -21,7 +21,7 @@ function restoreLocalBackup() {
     const raw = localStorage.getItem(LOCAL_BACKUP_KEY)
     if (!raw) return
     const { chats, keys } = JSON.parse(raw) as { chats: Chat[]; keys: APIKey[] }
-    useStore.setState({ chats, keys, activeChatId: chats[0]?.id ?? null })
+    useStore.setState({ chats, keys, activeChatId: null })
     localStorage.removeItem(LOCAL_BACKUP_KEY)
   } catch { /* ignore */ }
 }

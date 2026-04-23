@@ -1,4 +1,5 @@
 npm run build
+npm run dev
 
 
 deploy to vercel
@@ -128,6 +129,16 @@ The Compare Models page is live at /compare — accessible via the sidebar butto
     Stop button cancels all in-flight requests
     Panels can be added/removed dynamically
 
+KaTeX support for proper LaTeX formula rendering.
+
+
+Each compare session is saved as a real chat with [Compare] prefix — syncs to Firebase if logged in
+Left sidebar shows compare history, click any session to reload it
+Conversations are multi-turn — each new prompt builds on the previous context
+Responses are stored in the chat store as assistant messages tagged with model name
+The main chat sidebar also shows compare chats (with the [Compare] prefix in the title)
+
+
 give answer from muultiple modals
 (fixed) when it's answering user scroll top then it's not scrolling top
 when user loads then it shows last chat, it should show blank 
@@ -136,3 +147,7 @@ Search chats — filter sidebar by keyword across all chat titles and messages
 Keyboard shortcuts — Ctrl+K to search, Ctrl+N new chat, Ctrl+/ toggle sidebar
 System prompt / persona — let user set a custom instruction that prepends every conversation
 Prompt templates — save and reuse common prompts
+
+
+
+

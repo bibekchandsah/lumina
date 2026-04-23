@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import { AlertCircle, Clock, Cpu, Copy, Check as CheckIcon, Pencil, Volume2, VolumeX, RefreshCw } from 'lucide-react'
 import { memo, useState, useRef } from 'react'
 import type { Message } from '@/types'
@@ -36,13 +39,30 @@ const mdComponents = {
   blockquote: ({ children }: React.HTMLAttributes<HTMLElement>) => (
     <blockquote className="border-l-2 border-violet-500 pl-3 italic text-slate-400 my-2">{children}</blockquote>
   ),
+  'span.math.math-inline': ({ children }: React.HTMLAttributes<HTMLElement>) => (
+    <span className="inline-math">{children}</span>
+  ),
+  'div.math.math-display': ({ children }: React.HTMLAttributes<HTMLElement>) => (
+    <div className="block-math my-2">{children}</div>
+  ),
 }
 
 function AssistantContent({ content, animate, onScrollNeeded }: { content: string; animate: boolean; onScrollNeeded?: () => void }) {
   const { displayed, done } = useTypewriter(content, 10, animate, onScrollNeeded)
   return (
     <>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{displayed}</ReactMarkdown>
+      {done ? (
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          components={mdComponents}
+        >
+          {content}
+        </ReactMarkdown>
+      ) : (
+        // Avoid parsing partial/incomplete math while typewriter animation is in progress.
+        <p className="whitespace-pre-wrap">{displayed}</p>
+      )}
       {!done && <span className="inline-block w-[2px] h-[1em] bg-violet-400 animate-pulse ml-0.5 align-middle rounded-full" />}
     </>
   )

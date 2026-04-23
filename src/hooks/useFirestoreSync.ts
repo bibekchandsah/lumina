@@ -5,93 +5,76 @@ import { useStore } from '@/store'
 import type { AuthUser } from './useAuth'
 import type { Chat, APIKey } from '@/types'
 
+function mergeChats(local: Chat[], remote: Chat[]) {
+  const byId = new Map<string, Chat>()
+  for (const chat of local) byId.set(chat.id, chat)
+  for (const chat of remote) byId.set(chat.id, { ...byId.get(chat.id), ...chat })
+  return Array.from(byId.values()).sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
 export function useFirestoreSync(user: AuthUser | null) {
   const { chats, keys } = useStore()
   const prevChatsRef = useRef<Chat[]>([])
   const prevKeysRef = useRef<APIKey[]>([])
-  const remoteLoadedRef = useRef(false) // true after first remote load
+  const loadedRef = useRef(false)
   const unsubChatsRef = useRef<(() => void) | null>(null)
   const unsubKeysRef = useRef<(() => void) | null>(null)
 
-  // On login: load from Firestore once, then subscribe
   useEffect(() => {
     unsubChatsRef.current?.()
     unsubKeysRef.current?.()
-    remoteLoadedRef.current = false
+    loadedRef.current = false
 
     if (!user || !db) return
 
-    // --- Chats ---
     const chatsCol = collection(db, 'users', user.uid, 'chats')
+    const keysCol = collection(db, 'users', user.uid, 'keys')
 
-    // Initial load via getDocs (no index needed)
+    // Load chats once on login
     getDocs(chatsCol).then(snap => {
-      const firestoreChats: Chat[] = snap.docs.map(d => d.data() as Chat)
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-      if (firestoreChats.length > 0) {
+      const remote: Chat[] = snap.docs.map(d => d.data() as Chat).sort((a, b) => b.updatedAt - a.updatedAt)
+      if (remote.length > 0) {
         useStore.setState(s => ({
-          chats: firestoreChats,
-          activeChatId: firestoreChats.find(c => c.id === s.activeChatId)
-            ? s.activeChatId
-            : firestoreChats[0].id,
+          chats: mergeChats(s.chats, remote),
+          activeChatId: remote.find(c => c.id === s.activeChatId) ? s.activeChatId : null,
         }))
-        prevChatsRef.current = firestoreChats
+        prevChatsRef.current = remote
       }
-      remoteLoadedRef.current = true
-    }).catch(err => {
-      console.warn('Firestore chats load error:', err.message)
-      remoteLoadedRef.current = true
-    })
+      loadedRef.current = true
+    }).catch(err => { console.warn('Firestore chats load error:', err.message); loadedRef.current = true })
 
-    // Real-time listener for changes from other devices
+    // Real-time listener (other devices)
     unsubChatsRef.current = onSnapshot(chatsCol, snap => {
-      if (!remoteLoadedRef.current) return // skip until initial load done
-      const firestoreChats: Chat[] = snap.docs.map(d => d.data() as Chat)
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-      if (firestoreChats.length > 0) {
+      if (!loadedRef.current) return
+      const remote: Chat[] = snap.docs.map(d => d.data() as Chat).sort((a, b) => b.updatedAt - a.updatedAt)
+      if (remote.length > 0) {
         useStore.setState(s => ({
-          chats: firestoreChats,
-          activeChatId: firestoreChats.find(c => c.id === s.activeChatId)
-            ? s.activeChatId
-            : firestoreChats[0].id,
+          chats: mergeChats(s.chats, remote),
+          activeChatId: remote.find(c => c.id === s.activeChatId) ? s.activeChatId : null,
         }))
-        prevChatsRef.current = firestoreChats
+        prevChatsRef.current = remote
       }
     }, err => console.warn('Firestore chats listener error:', err.message))
 
-    // --- Keys ---
-    const keysCol = collection(db, 'users', user.uid, 'keys')
-
+    // Load keys once on login
     getDocs(keysCol).then(snap => {
-      const firestoreKeys: APIKey[] = snap.docs.map(d => d.data() as APIKey)
-        .sort((a, b) => a.createdAt - b.createdAt)
-      if (firestoreKeys.length > 0) {
-        useStore.setState({ keys: firestoreKeys })
-        prevKeysRef.current = firestoreKeys
-      }
+      const remote: APIKey[] = snap.docs.map(d => d.data() as APIKey).sort((a, b) => a.createdAt - b.createdAt)
+      if (remote.length > 0) { useStore.setState({ keys: remote }); prevKeysRef.current = remote }
     }).catch(err => console.warn('Firestore keys load error:', err.message))
 
     unsubKeysRef.current = onSnapshot(keysCol, snap => {
-      if (!remoteLoadedRef.current) return
-      const firestoreKeys: APIKey[] = snap.docs.map(d => d.data() as APIKey)
-        .sort((a, b) => a.createdAt - b.createdAt)
-      if (firestoreKeys.length > 0) {
-        useStore.setState({ keys: firestoreKeys })
-        prevKeysRef.current = firestoreKeys
-      }
+      if (!loadedRef.current) return
+      const remote: APIKey[] = snap.docs.map(d => d.data() as APIKey).sort((a, b) => a.createdAt - b.createdAt)
+      if (remote.length > 0) { useStore.setState({ keys: remote }); prevKeysRef.current = remote }
     }, err => console.warn('Firestore keys listener error:', err.message))
 
-    return () => {
-      unsubChatsRef.current?.()
-      unsubKeysRef.current?.()
-    }
+    return () => { unsubChatsRef.current?.(); unsubKeysRef.current?.() }
   }, [user?.uid])
 
-  // Push local chat changes to Firestore (debounced, only after remote loaded)
+  // Push chats — always write, no remoteLoaded guard
   useEffect(() => {
-    if (!user || !db || !remoteLoadedRef.current) return
+    if (!user || !db) return
     const timer = setTimeout(async () => {
-      if (!remoteLoadedRef.current) return
       try {
         for (const chat of chats) {
           await setDoc(doc(db!, 'users', user.uid, 'chats', chat.id), chat as object)
@@ -106,11 +89,10 @@ export function useFirestoreSync(user: AuthUser | null) {
     return () => clearTimeout(timer)
   }, [chats, user?.uid])
 
-  // Push local key changes to Firestore (debounced)
+  // Push keys
   useEffect(() => {
-    if (!user || !db || !remoteLoadedRef.current) return
+    if (!user || !db) return
     const timer = setTimeout(async () => {
-      if (!remoteLoadedRef.current) return
       try {
         for (const key of keys) {
           await setDoc(doc(db!, 'users', user.uid, 'keys', key.id), key as object)

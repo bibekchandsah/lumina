@@ -7,14 +7,15 @@ import { cn } from '@/utils/cn'
 import type { Chat } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
 import { db, isConfigured } from '@/services/firebase'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, setDoc, deleteDoc } from 'firebase/firestore'
 
 function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
-  const { deleteChat, updateChatTitle, togglePin, toggleArchive, setActiveChat } = useStore()
+  const { deleteChat, updateChatTitle, updateChatShare, togglePin, toggleArchive, setActiveChat } = useStore()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(chat.title)
   const [sharing, setSharing] = useState(false)
+  const [unsharing, setUnsharing] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const ref = useRef<HTMLDivElement>(null)
 
@@ -25,13 +26,33 @@ function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
     }
     setSharing(true)
     try {
-      const shareId = crypto.randomUUID()
-      await setDoc(doc(db, 'shared', shareId), { ...chat, sharedAt: Date.now() })
+      const sharedAt = Date.now()
+      const shareId = chat.sharedId || crypto.randomUUID()
+      await setDoc(doc(db, 'shared', shareId), { ...chat, sharedId: shareId, sharedAt })
+      updateChatShare(chat.id, shareId, sharedAt)
       const url = `${window.location.origin}/share/${shareId}`
       setShareUrl(url)
       await navigator.clipboard.writeText(url)
     } catch { alert('Failed to create share link.') }
     finally { setSharing(false) }
+  }
+
+  const handleUnshare = async () => {
+    if (!chat.sharedId || !isConfigured || !db) {
+      alert('This chat is not currently shared.')
+      return
+    }
+    setUnsharing(true)
+    try {
+      await deleteDoc(doc(db, 'shared', chat.sharedId))
+      updateChatShare(chat.id, null)
+      setShareUrl('')
+      onClose()
+    } catch {
+      alert('Failed to unshare chat.')
+    } finally {
+      setUnsharing(false)
+    }
   }
 
   useEffect(() => {
@@ -88,6 +109,7 @@ function ChatMenu({ chat, onClose }: { chat: Chat; onClose: () => void }) {
     { icon: chat.pinned ? PinOff : Pin, label: chat.pinned ? 'Unpin' : 'Pin', action: () => { togglePin(chat.id); onClose() } },
     { icon: chat.archived ? ArchiveRestore : Archive, label: chat.archived ? 'Unarchive' : 'Archive', action: () => { toggleArchive(chat.id); if (chat.archived) setActiveChat(chat.id); onClose() } },
     { icon: Share2, label: sharing ? 'Sharing…' : 'Share', action: handleShare },
+    ...(chat.sharedId ? [{ icon: Share2, label: unsharing ? 'Unsharing…' : 'Unshare', action: handleUnshare }] : []),
     { icon: Trash2, label: 'Delete', action: () => setConfirmDelete(true), danger: true },
   ]
 
@@ -122,7 +144,7 @@ function ChatItem({ chat }: { chat: Chat }) {
       exit={{ opacity: 0, x: -10 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false) }}
-      onClick={() => setActiveChat(chat.id)}
+      onClick={() => setActiveChat(chat.id, true)}
       className={cn(
         'relative group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 text-sm cursor-pointer',
         isActive ? 'bg-violet-600/25 border border-violet-500/30 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'
@@ -148,15 +170,17 @@ function ChatItem({ chat }: { chat: Chat }) {
 }
 
 export function Sidebar() {
-  const { chats, createChat, setSettingsOpen, keys } = useStore()
+  const { chats, setActiveChat, clearRememberedActiveChat, setSettingsOpen, keys } = useStore()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const activeCount = keys.filter(k => k.status === 'active').length
 
-  const pinned = chats.filter(c => c.pinned && !c.archived)
-  const regular = chats.filter(c => !c.pinned && !c.archived)
-  const archived = chats.filter(c => c.archived)
+  const pinned = chats.filter(c => c.pinned && !c.archived && !c.compareMode)
+  const regular = chats.filter(c => !c.pinned && !c.archived && !c.compareMode)
+  const archived = chats.filter(c => c.archived && !c.compareMode)
+  const compareChats = chats.filter(c => c.compareMode)
   const [showArchived, setShowArchived] = useState(false)
+  const [showCompare, setShowCompare] = useState(true)
 
   return (
     <aside className="w-64 flex flex-col h-full glass-dark border-r border-white/10">
@@ -176,7 +200,7 @@ export function Sidebar() {
       {/* New Chat */}
       <div className="p-3">
         <button
-          onClick={() => createChat()}
+          onClick={() => { setActiveChat(null); clearRememberedActiveChat() }}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-sm transition-all duration-200 hover:scale-[1.02]"
         >
           <Plus size={16} /> New Chat
@@ -218,6 +242,22 @@ export function Sidebar() {
             </button>
             <AnimatePresence>
               {showArchived && archived.map(chat => <ChatItem key={chat.id} chat={chat} />)}
+            </AnimatePresence>
+          </>
+        )}
+
+        {compareChats.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowCompare(s => !s)}
+              className="w-full flex items-center gap-2 px-2 py-1 text-xs text-slate-600 hover:text-slate-400 transition-colors mt-2"
+            >
+              <GitCompare size={11} />
+              Compare Sessions ({compareChats.length})
+              <Check size={10} className={cn('ml-auto transition-transform', showCompare ? 'rotate-0' : '-rotate-90')} />
+            </button>
+            <AnimatePresence>
+              {showCompare && compareChats.map(chat => <ChatItem key={chat.id} chat={chat} />)}
             </AnimatePresence>
           </>
         )}

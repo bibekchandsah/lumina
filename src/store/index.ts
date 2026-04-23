@@ -17,11 +17,14 @@ interface AppStore {
   // Chats
   chats: Chat[]
   activeChatId: string | null
-  createChat: () => string
+  rememberedActiveChatId: string | null
+  createChat: (overrides?: Partial<Chat>) => string
   deleteChat: (id: string) => void
-  setActiveChat: (id: string) => void
+  setActiveChat: (id: string | null, rememberForReload?: boolean) => void
+  clearRememberedActiveChat: () => void
   addMessage: (chatId: string, msg: Omit<Message, 'id' | 'timestamp'>) => void
   updateChatTitle: (chatId: string, title: string) => void
+  updateChatShare: (chatId: string, sharedId: string | null, sharedAt?: number) => void
   activeChat: () => Chat | null
   editMessage: (chatId: string, messageId: string, newContent: string) => void
   togglePin: (chatId: string) => void
@@ -46,6 +49,8 @@ interface AppStore {
   abortController: AbortController | null
   setAbortController: (c: AbortController | null) => void
   stopStreaming: () => void
+  activeChatCompareId: string | null
+  setActiveChatCompareId: (id: string | null) => void
 }
 
 const defaultSettings: AppSettings = {
@@ -119,17 +124,26 @@ export const useStore = create<AppStore>()(
 
       chats: [],
       activeChatId: null,
-      createChat: () => {
+      rememberedActiveChatId: null,
+      createChat: (overrides) => {
         const id = crypto.randomUUID()
-        const chat: Chat = { id, title: 'New Chat', messages: [], createdAt: Date.now(), updatedAt: Date.now() }
-        set(s => ({ chats: [chat, ...s.chats], activeChatId: id }))
+        const chat: Chat = { id, title: 'New Chat', messages: [], createdAt: Date.now(), updatedAt: Date.now(), ...overrides }
+        set(s => ({ chats: [chat, ...s.chats], activeChatId: id, rememberedActiveChatId: null }))
         return id
       },
       deleteChat: (id) => set(s => {
         const chats = s.chats.filter(c => c.id !== id)
-        return { chats, activeChatId: s.activeChatId === id ? (chats[0]?.id ?? null) : s.activeChatId }
+        return {
+          chats,
+          activeChatId: s.activeChatId === id ? (chats[0]?.id ?? null) : s.activeChatId,
+          rememberedActiveChatId: s.rememberedActiveChatId === id ? null : s.rememberedActiveChatId,
+        }
       }),
-      setActiveChat: (id) => set({ activeChatId: id }),
+      setActiveChat: (id, rememberForReload = false) => set({
+        activeChatId: id,
+        rememberedActiveChatId: rememberForReload && id ? id : get().rememberedActiveChatId,
+      }),
+      clearRememberedActiveChat: () => set({ rememberedActiveChatId: null }),
       addMessage: (chatId, msg) => set(s => ({
         chats: s.chats.map(c => {
           if (c.id !== chatId) return c
@@ -142,6 +156,16 @@ export const useStore = create<AppStore>()(
       })),
       updateChatTitle: (chatId, title) => set(s => ({
         chats: s.chats.map(c => c.id === chatId ? { ...c, title } : c)
+      })),
+      updateChatShare: (chatId, sharedId, sharedAt) => set(s => ({
+        chats: s.chats.map(c => {
+          if (c.id !== chatId) return c
+          if (!sharedId) {
+            const { sharedId: _sid, sharedAt: _sat, ...rest } = c
+            return rest
+          }
+          return { ...c, sharedId, sharedAt: sharedAt ?? Date.now() }
+        })
       })),
       // Truncate messages from messageId onward (keep messages before it)
       editMessage: (chatId, messageId, _newContent) => set(s => ({
@@ -216,10 +240,17 @@ export const useStore = create<AppStore>()(
         abortController?.abort()
         set({ isStreaming: false, streamingContent: '', abortController: null })
       },
+      activeChatCompareId: null,
+      setActiveChatCompareId: (id) => set({ activeChatCompareId: id }),
     }),
     {
       name: 'lumina-store',
-      partialize: (s) => ({ keys: s.keys, chats: s.chats, settings: s.settings }),
+      partialize: (s) => ({
+        keys: s.keys,
+        chats: s.chats,
+        settings: s.settings,
+        rememberedActiveChatId: s.rememberedActiveChatId,
+      }),
     }
   )
 )

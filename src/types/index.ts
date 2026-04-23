@@ -39,8 +39,12 @@ export interface Chat {
   messages: Message[]
   createdAt: number
   updatedAt: number
+  sharedId?: string
+  sharedAt?: number
   pinned?: boolean
   archived?: boolean
+  compareMode?: boolean
+  comparePanels?: Array<{ provider: Provider; model: string }>
 }
 
 export interface AppSettings {
