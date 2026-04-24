@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Trash2, ExternalLink, Eye, EyeOff, RefreshCw, Download, Upload, Pencil } from 'lucide-react'
+import { X, Plus, Trash2, ExternalLink, Eye, EyeOff, RefreshCw, Download, Upload, Pencil, DownloadCloud, Smartphone } from 'lucide-react'
 import { useStore } from '@/store'
 import { PROVIDER_INFO, PROVIDER_MODELS, type Provider } from '@/types'
 import { cn } from '@/utils/cn'
@@ -14,6 +14,18 @@ const STATUS_STYLES = {
 }
 const STATUS_LABEL = { active: '🟢 Active', failed: '🔴 Failed', rate_limited: '⚠️ Limited' }
 
+type BeforeInstallPromptEvent = Event & {
+  readonly platforms: string[]
+  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
+  prompt: () => Promise<void>
+}
+
+declare global {
+  interface Window {
+    __luminaInstallPrompt: BeforeInstallPromptEvent | null
+  }
+}
+
 export function Settings() {
   const { settingsOpen, setSettingsOpen, keys, addKey, removeKey, updateKeyStatus, updateKey, settings, updateSettings } = useStore()
   const [tab, setTab] = useState<'keys' | 'settings'>('keys')
@@ -22,6 +34,54 @@ export function Settings() {
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<{ label: string; model: string }>({ label: '', model: '' })
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [isInstalled, setIsInstalled] = useState(false)
+
+  useEffect(() => {
+    const onInstallPromptReady = () => {
+      if (window.__luminaInstallPrompt) {
+        setInstallPrompt(window.__luminaInstallPrompt)
+      }
+    }
+
+    const onAppInstalled = () => {
+      setInstallPrompt(null)
+      setIsInstalled(true)
+    }
+
+    const isStandaloneSafari = 'standalone' in window.navigator && Boolean((window.navigator as { standalone?: boolean }).standalone)
+    setIsInstalled(window.matchMedia('(display-mode: standalone)').matches || isStandaloneSafari)
+    if (window.__luminaInstallPrompt) {
+      setInstallPrompt(window.__luminaInstallPrompt)
+    }
+
+    window.addEventListener('lumina:installprompt-ready', onInstallPromptReady)
+    window.addEventListener('appinstalled', onAppInstalled)
+
+    return () => {
+      window.removeEventListener('lumina:installprompt-ready', onInstallPromptReady)
+      window.removeEventListener('appinstalled', onAppInstalled)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (settingsOpen && window.__luminaInstallPrompt) {
+      setInstallPrompt(window.__luminaInstallPrompt)
+    }
+  }, [settingsOpen])
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) {
+      alert('Use the install icon in your browser address bar to install the app.')
+      return
+    }
+    await installPrompt.prompt()
+    const choice = await installPrompt.userChoice
+    if (choice.outcome === 'accepted') {
+      setInstallPrompt(null)
+      window.__luminaInstallPrompt = null
+    }
+  }
 
   const handleAdd = () => {
     if (!form.key.trim()) return
@@ -85,6 +145,41 @@ export function Settings() {
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
               {tab === 'keys' ? (
                 <>
+                  {/* PWA install */}
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">Install App</p>
+                    <div className="glass rounded-xl p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+                          <Smartphone size={16} className="text-violet-300" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm text-white font-medium">Install Lumina</p>
+                          <p className="text-xs text-slate-500">Add Lumina to your home screen or desktop for a more app-like experience.</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={handleInstallApp}
+                          disabled={isInstalled}
+                          className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          <DownloadCloud size={14} />
+                          {isInstalled ? 'Installed' : installPrompt ? 'Install App' : 'Use Browser Install'}
+                        </button>
+                        {isInstalled ? (
+                          <div className="px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs flex items-center justify-center">
+                            Already installed on this device
+                          </div>
+                        ) : (
+                          <div className="px-3 py-2 rounded-lg border border-white/10 bg-black/20 text-slate-500 text-xs flex items-center justify-center text-center">
+                            {installPrompt ? 'Install is available now' : 'Install prompt was not captured — use browser address-bar install icon'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Provider links */}
                   <div className="space-y-2">
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Get API Keys</p>
