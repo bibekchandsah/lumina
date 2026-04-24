@@ -170,11 +170,20 @@ function ChatItem({ chat }: { chat: Chat }) {
 }
 
 export function Sidebar() {
-  const { chats, setActiveChat, clearRememberedActiveChat, setSettingsOpen, keys } = useStore()
+  const { chats, setActiveChat, clearRememberedActiveChat, setSettingsOpen, keys, isOnline, syncStatus, lastSyncedAt } = useStore()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const activeCount = keys.filter(k => k.status === 'active').length
   const [searchQuery, setSearchQuery] = useState('')
+  const syncLabel = !user
+    ? 'Local only'
+    : !isOnline
+      ? 'Offline - saving locally'
+      : syncStatus === 'syncing'
+        ? 'Syncing…'
+        : lastSyncedAt
+          ? `Synced ${new Date(lastSyncedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+          : 'Ready to sync'
 
   const filteredChats = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -202,8 +211,12 @@ export function Sidebar() {
           </div>
           <span className="font-bold text-lg gradient-text">Lumina</span>
         </div>
-        <div className="mt-1 text-xs text-slate-500">
-          {activeCount} active key{activeCount !== 1 ? 's' : ''}
+        <div className="mt-1 flex flex-col gap-1 text-xs text-slate-500">
+          <span>{activeCount} active key{activeCount !== 1 ? 's' : ''}</span>
+          <span className={cn('inline-flex items-center gap-1.5', !isOnline ? 'text-amber-300' : syncStatus === 'syncing' ? 'text-violet-300' : 'text-slate-500')}>
+            <span className={cn('w-1.5 h-1.5 rounded-full', !isOnline ? 'bg-amber-400' : syncStatus === 'syncing' ? 'bg-violet-400 animate-pulse' : 'bg-emerald-400')} />
+            {syncLabel}
+          </span>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 export type Provider = 'gemini' | 'groq' | 'grok'
 
 export type KeyStatus = 'active' | 'failed' | 'rate_limited'
+export type SyncStatus = 'idle' | 'offline' | 'syncing' | 'error'
 
 export interface APIKey {
   id: string

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { APIKey, Chat, Message, AppSettings, Provider } from '@/types'
+import type { APIKey, Chat, Message, AppSettings, Provider, SyncStatus } from '@/types'
 import { PROVIDER_MODELS } from '@/types'
 
 interface AppStore {
@@ -51,6 +51,11 @@ interface AppStore {
   stopStreaming: () => void
   activeChatCompareId: string | null
   setActiveChatCompareId: (id: string | null) => void
+
+  // Connectivity / sync
+  isOnline: boolean
+  syncStatus: SyncStatus
+  lastSyncedAt: number | null
 }
 
 const defaultSettings: AppSettings = {
@@ -242,6 +247,10 @@ export const useStore = create<AppStore>()(
       },
       activeChatCompareId: null,
       setActiveChatCompareId: (id) => set({ activeChatCompareId: id }),
+
+      isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+      syncStatus: typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'idle',
+      lastSyncedAt: null,
     }),
     {
       name: 'lumina-store',
