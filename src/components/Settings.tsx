@@ -61,37 +61,37 @@ export function Settings() {
           <motion.div
             initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-full w-[480px] glass-dark border-l border-white/10 z-50 flex flex-col"
+            className="fixed inset-y-0 right-0 w-full max-w-full sm:w-[480px] glass-dark border-l border-white/10 z-50 flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10">
               <h2 className="text-lg font-semibold text-white">Settings</h2>
-              <button onClick={() => setSettingsOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+              <button onClick={() => setSettingsOpen(false)} className="rounded-lg p-2 text-slate-400 hover:text-white transition-colors">
                 <X size={20} />
               </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 px-6 py-3 border-b border-white/10">
+            <div className="flex gap-1 px-4 sm:px-6 py-3 border-b border-white/10 overflow-x-auto">
               {(['keys', 'settings'] as const).map(t => (
                 <button key={t} onClick={() => setTab(t)}
-                  className={cn('px-4 py-1.5 rounded-lg text-sm capitalize transition-all', tab === t ? 'bg-violet-600/30 text-violet-300 border border-violet-500/30' : 'text-slate-500 hover:text-white')}
+                  className={cn('px-4 py-1.5 rounded-lg text-sm capitalize transition-all whitespace-nowrap', tab === t ? 'bg-violet-600/30 text-violet-300 border border-violet-500/30' : 'text-slate-500 hover:text-white')}
                 >
                   {t === 'keys' ? 'API Keys' : 'Preferences'}
                 </button>
               ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
               {tab === 'keys' ? (
                 <>
                   {/* Provider links */}
                   <div className="space-y-2">
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Get API Keys</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {(Object.entries(PROVIDER_INFO) as [Provider, typeof PROVIDER_INFO[Provider]][]).map(([p, info]) => (
                         <a key={p} href={info.keyUrl} target="_blank" rel="noopener noreferrer"
-                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl glass hover:bg-white/10 transition-all text-center group"
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl glass hover:bg-white/10 transition-all text-center group justify-center"
                         >
                           <span className="text-xs font-medium text-white">{info.name}</span>
                           <ExternalLink size={12} className="text-slate-500 group-hover:text-violet-400 transition-colors" />
@@ -102,9 +102,9 @@ export function Settings() {
 
                   {/* Add key */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <p className="text-xs text-slate-500 uppercase tracking-wider">Your Keys ({keys.length})</p>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button onClick={importKeys} className="text-xs text-slate-500 hover:text-white flex items-center gap-1 transition-colors">
                           <Upload size={12} /> Import
                         </button>
@@ -123,7 +123,7 @@ export function Settings() {
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                           className="glass rounded-xl p-4 space-y-3 overflow-hidden"
                         >
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <label className="text-xs text-slate-500 mb-1 block">Provider</label>
                               <Select
@@ -197,7 +197,7 @@ export function Settings() {
                                 <span className="text-xs text-slate-600">{key.model}</span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex flex-wrap items-center gap-1 shrink-0 justify-end">
                               {key.status !== 'active' && (
                                 <button onClick={() => updateKeyStatus(key.id, 'active')}
                                   className="p-1.5 rounded-lg hover:bg-white/10 text-slate-500 hover:text-emerald-400 transition-all" title="Reset to active">
@@ -300,7 +300,6 @@ export function Settings() {
                   </div>
                 </>
               ) : (
-                /* Preferences */
                 <div className="space-y-5">
                   <SettingRow label="Default Provider" desc="Which provider to try first">
                     <Select
@@ -312,7 +311,7 @@ export function Settings() {
                         { value: 'groq', label: 'Groq' },
                         { value: 'grok', label: 'Grok' },
                       ]}
-                      className="w-40"
+                      className="w-full sm:w-40"
                     />
                   </SettingRow>
 
@@ -325,14 +324,14 @@ export function Settings() {
                   <SettingRow label="Retry Count" desc="Retries per key before switching">
                     <input type="number" min={0} max={5} value={settings.retryCount}
                       onChange={e => updateSettings({ retryCount: Number(e.target.value) })}
-                      className="w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500/50 text-center"
+                      className="w-full sm:w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500/50 text-center"
                     />
                   </SettingRow>
 
                   <SettingRow label="Cooldown (minutes)" desc="Rate-limited key cooldown period">
                     <input type="number" min={1} max={60} value={settings.cooldownMinutes}
                       onChange={e => updateSettings({ cooldownMinutes: Number(e.target.value) })}
-                      className="w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500/50 text-center"
+                      className="w-full sm:w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500/50 text-center"
                     />
                   </SettingRow>
 
@@ -352,8 +351,8 @@ export function Settings() {
 
 function SettingRow({ label, desc, children }: { label: string; desc: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+      <div className="min-w-0">
         <p className="text-sm text-white">{label}</p>
         <p className="text-xs text-slate-500">{desc}</p>
       </div>

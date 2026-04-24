@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Plus, X, Send, Zap, Copy, Check as CheckIcon, GitCompare, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, X, Send, Zap, Copy, Check as CheckIcon, GitCompare, Trash2, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useStore } from '@/store'
@@ -38,6 +38,7 @@ export function ComparePage() {
   const activeChatCompareId = useStore(s => s.activeChatCompareId)
   const setActiveChatCompareId = useStore(s => s.setActiveChatCompareId)
   const activeKeys = keys.filter(k => k.status === 'active')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const [panels, setPanels] = useState<Panel[]>(() => {
     const defaults: Panel[] = []
@@ -196,50 +197,79 @@ export function ComparePage() {
   const compareChats = chats.filter(c => c.compareMode)
 
   return (
-    <div className="h-screen bg-[#0a0a0f] flex overflow-hidden">
+    <div className="relative h-screen bg-[#0a0a0f] flex overflow-hidden">
       {/* Mini sidebar for compare history */}
-      <div className="w-52 shrink-0 border-r border-white/10 flex flex-col glass-dark">
-        <div className="p-3 border-b border-white/10">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
-              <Zap size={12} className="text-white" />
-            </div>
-            <span className="text-sm font-semibold gradient-text">Compare</span>
-          </div>
-          <button onClick={handleNewSession}
-            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs transition-all">
-            <Plus size={13} /> New Session
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {compareChats.length === 0 && <p className="text-xs text-slate-700 text-center py-4">No sessions yet</p>}
-          {compareChats.map(c => (
-            <div key={c.id}
-              className={cn('group flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
-                c.id === activeChatCompareId ? 'bg-violet-600/20 text-white' : 'text-slate-500 hover:bg-white/5 hover:text-white'
-              )}
-              onClick={() => setActiveChatCompareId(c.id)}
-            >
-              <GitCompare size={11} className="shrink-0" />
-              <span className="truncate flex-1">{c.title.replace('[Compare] ', '')}</span>
-              <button onClick={e => { e.stopPropagation(); deleteChat(c.id); if (c.id === activeChatCompareId) { setActiveChatCompareId(null); setTurns([]) } }}
-                className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all">
-                <Trash2 size={10} />
+      <motion.div
+        animate={{ width: sidebarCollapsed ? 0 : 208 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+        className="shrink-0 border-r border-white/10 flex flex-col glass-dark overflow-hidden relative"
+      >
+        {!sidebarCollapsed && (
+          <div className="p-3 border-b border-white/10">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0">
+                  <Zap size={12} className="text-white" />
+                </div>
+                <span className="text-sm font-semibold gradient-text truncate">Compare</span>
+              </div>
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="rounded-lg p-1.5 text-slate-500 hover:text-white hover:bg-white/5 transition-colors"
+                title="Collapse compare sidebar"
+              >
+                <PanelLeftClose size={14} />
               </button>
             </div>
-          ))}
-        </div>
-        <div className="p-2 border-t border-white/10">
-          <Link to="/" className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-slate-600 hover:text-white transition-colors">
-            <ArrowLeft size={12} /> Back to chat
-          </Link>
-        </div>
-      </div>
+            <button onClick={handleNewSession}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs transition-all">
+              <Plus size={13} /> New Session
+            </button>
+          </div>
+        )}
+        {!sidebarCollapsed && (
+          <>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {compareChats.length === 0 && <p className="text-xs text-slate-700 text-center py-4">No sessions yet</p>}
+              {compareChats.map(c => (
+                <div key={c.id}
+                  className={cn('group flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
+                    c.id === activeChatCompareId ? 'bg-violet-600/20 text-white' : 'text-slate-500 hover:bg-white/5 hover:text-white'
+                  )}
+                  onClick={() => setActiveChatCompareId(c.id)}
+                >
+                  <GitCompare size={11} className="shrink-0" />
+                  <span className="truncate flex-1">{c.title.replace('[Compare] ', '')}</span>
+                  <button onClick={e => { e.stopPropagation(); deleteChat(c.id); if (c.id === activeChatCompareId) { setActiveChatCompareId(null); setTurns([]) } }}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all">
+                    <Trash2 size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="p-2 border-t border-white/10">
+              <Link to="/" className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-slate-600 hover:text-white transition-colors">
+                <ArrowLeft size={12} /> Back to chat
+              </Link>
+            </div>
+          </>
+        )}
+      </motion.div>
+
+      {sidebarCollapsed && (
+        <button
+          onClick={() => setSidebarCollapsed(false)}
+          className="absolute top-4 left-2 z-50 rounded-lg p-2 bg-[#0f111a] border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition-colors shadow-lg"
+          title="Expand compare sidebar"
+        >
+          <PanelLeftOpen size={16} />
+        </button>
+      )}
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Panel config header */}
-        <div className="border-b border-white/10 px-4 py-2 flex items-center gap-2 shrink-0 bg-black/20 overflow-x-auto">
+        <div className="border-b border-white/10 px-4 py-2 flex items-center gap-2 shrink-0 bg-black/20 overflow-x-auto scrollbar-x">
           {panels.map((panel, idx) => (
             <div key={panel.id} className={cn('flex items-center gap-1.5 shrink-0', idx > 0 && 'pl-2 border-l border-white/10')}>
               <div className="w-2 h-2 rounded-full" style={{ background: PROVIDER_INFO[panel.provider].color }} />
@@ -289,39 +319,44 @@ export function ComparePage() {
               </div>
 
               {/* AI responses side by side */}
-              <div className="grid px-4 pb-4 gap-3" style={{ gridTemplateColumns: `repeat(${Object.keys(turn.responses).length}, 1fr)` }}>
-                {Object.entries(turn.responses).map(([pid, res]) => (
-                  <motion.div key={pid} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                    className="glass rounded-xl overflow-hidden"
-                  >
-                    {/* Model label */}
-                    <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-black/20">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: PROVIDER_INFO[res.provider]?.color || '#888' }} />
-                      <span className="text-xs text-slate-400 truncate">{PROVIDER_INFO[res.provider]?.name} · {res.model}</span>
-                    </div>
-                    {/* Content */}
-                    <div className="p-3 text-sm text-slate-200 leading-relaxed min-h-[60px]">
-                      {res.loading && !res.streaming ? (
-                        <div className="flex gap-1.5 items-center py-1">
-                          {[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}
-                        </div>
-                      ) : res.error ? (
-                        <p className="text-red-400 text-xs">{res.error}</p>
-                      ) : (
-                        <>
-                          <div className="prose prose-invert prose-sm max-w-none">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{res.streaming || res.content}</ReactMarkdown>
+              <div className="px-4 pb-4 overflow-x-auto scrollbar-x">
+                <div
+                  className="grid gap-3 min-w-full"
+                  style={{ gridTemplateColumns: `repeat(${Object.keys(turn.responses).length}, minmax(320px, 1fr))` }}
+                >
+                  {Object.entries(turn.responses).map(([pid, res]) => (
+                    <motion.div key={pid} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      className="glass rounded-xl overflow-hidden"
+                    >
+                      {/* Model label */}
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-black/20">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: PROVIDER_INFO[res.provider]?.color || '#888' }} />
+                        <span className="text-xs text-slate-400 truncate">{PROVIDER_INFO[res.provider]?.name} · {res.model}</span>
+                      </div>
+                      {/* Content */}
+                      <div className="p-3 text-sm text-slate-200 leading-relaxed min-h-[60px]">
+                        {res.loading && !res.streaming ? (
+                          <div className="flex gap-1.5 items-center py-1">
+                            {[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}
                           </div>
-                          {res.loading && <span className="inline-block w-[2px] h-[1em] bg-violet-400 animate-pulse ml-0.5 align-middle rounded-full" />}
-                        </>
+                        ) : res.error ? (
+                          <p className="text-red-400 text-xs">{res.error}</p>
+                        ) : (
+                          <>
+                            <div className="prose prose-invert prose-sm max-w-none">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{res.streaming || res.content}</ReactMarkdown>
+                            </div>
+                            {res.loading && <span className="inline-block w-[2px] h-[1em] bg-violet-400 animate-pulse ml-0.5 align-middle rounded-full" />}
+                          </>
+                        )}
+                      </div>
+                      {/* Stats */}
+                      {!res.loading && res.content && (
+                        <ResponseMeta res={res} />
                       )}
-                    </div>
-                    {/* Stats */}
-                    {!res.loading && res.content && (
-                      <ResponseMeta res={res} />
-                    )}
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
